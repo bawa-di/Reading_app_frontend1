@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:provider/provider.dart';
 import 'package:reading_app_front2/pages/Login%20Screen.dart';
+import 'package:reading_app_front2/pages/ProfileScreen.dart';
 import 'package:reading_app_front2/pages/RegisterScreen.dart';
+import 'package:reading_app_front2/pages/SettingsScreen.dart';
+import 'package:reading_app_front2/pages/home.dart';
 import 'package:reading_app_front2/pages/welcom.dart';
+import 'package:reading_app_front2/provider/user_provider.dart';
+import 'package:reading_app_front2/widget/MainWrapper.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    // تغليف التطبيق بالـ MultiProvider لجعله مهيئاً هندسياً لأي إضافات مستقبلية
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => UserProvider())],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -18,28 +29,28 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // هذه الطريقة تحل مشكلة الـ inherit والـ TextStyle lerp
         useMaterial3: true,
-        textTheme: GoogleFonts.arimaTextTheme(
-          ThemeData.light().textTheme, // نأخذ الثيم الأساسي ونطبق عليه خط كايرو
-        ),
+        textTheme: GoogleFonts.arimaTextTheme(ThemeData.light().textTheme),
       ),
-      // --- إضافة دعم اللغة العربية والاتجاه من اليمين لليسار ---
+      // --- الحفاظ على إعدادات اللغة العربية الخاصة بكِ ---
       localizationsDelegates: const [
         GlobalCupertinoLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale("ar", "AE"), // اللغة العربية
-      ],
-      locale: const Locale("ar", "AE"), // إجبار التطبيق على الواجهة العربية
+      supportedLocales: const [Locale("ar", "AE")],
+      locale: const Locale("ar", "AE"),
       // -------------------------------------------------------
       initialRoute: 'WelcomePage',
       routes: {
+         MainWrapper.id: (context) => const MainWrapper(),
+       
         'WelcomePage': (context) => const WelcomePage(),
-        LoginScreen.titel: (context) => const LoginScreen(),
+        LoginScreen.id: (context) => const LoginScreen(),
         RegisterScreen.id: (context) => const RegisterScreen(),
+        HomeScreen.id: (context) => const HomeScreen(),
+        ProfileScreen.id: (context) => const ProfileScreen(),
+         SettingsScreen.id: (context) => const SettingsScreen(),
       },
     );
   }

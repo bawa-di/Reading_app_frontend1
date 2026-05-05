@@ -23,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   File? _pickedImage;
   bool _isLoading = false;
 
+  // استخدام المساعد الموحد لاختيار الصورة
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     try {
@@ -55,11 +56,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     // 2. التحقق من تطابق كلمة المرور
     if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("كلمة المرور غير متطابقة"),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("كلمة المرور غير متطابقة")));
       return;
     }
 
@@ -79,10 +78,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // إظهار رسالة النجاح التي كانت محذوفة
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              backgroundColor:AppColors.textFieldFill,
+              backgroundColor: AppColors.textFieldFill,
               content: Text(
                 style: TextStyle(color: AppColors.burgundy),
-                "تم إنشاء الحساب بنجاح!"),
+                "تم إنشاء الحساب بنجاح!",
+              ),
             ),
           );
 

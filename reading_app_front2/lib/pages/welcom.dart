@@ -80,7 +80,7 @@ class WelcomePage extends StatelessWidget {
                       textColor: AppColors.burgundy,
                       isBorder: true,
                       onPressed: () {
-                        Navigator.pushNamed(context, LoginScreen.titel);
+                        Navigator.pushNamed(context, LoginScreen.id);
                       },
                     ),
                     const SizedBox(height: 20),

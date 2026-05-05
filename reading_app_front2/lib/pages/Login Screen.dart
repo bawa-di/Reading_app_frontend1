@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; 
 import 'package:reading_app_front2/conset_app.dart';
 import 'package:reading_app_front2/pages/RegisterScreen.dart';
+import 'package:reading_app_front2/pages/home.dart';
+import 'package:reading_app_front2/provider/user_provider.dart';
 import 'package:reading_app_front2/services/AuthService.dart';
 import 'package:reading_app_front2/widget/AnimatedBookIcon.dart';
 import 'package:reading_app_front2/widget/Custom%20Components.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:reading_app_front2/models/UserProfileModel.dart'; 
 
 class LoginScreen extends StatefulWidget {
-  static String titel = 'login'; // تأكدي من تسميته id ليتوافق مع الـ Routes
-
+  static String id = 'login'; // تأكدي أن هذا المعرف مطابق لما في main.dart
   const LoginScreen({super.key});
 
   @override
@@ -24,15 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
     String password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: AppColors.textFieldFill,
-          content: Text(
-            style: TextStyle(color: AppColors.burgundy),
-            "يرجى إدخال البريد وكلمة المرور",
-          ),
-        ),
-      );
+      _showSnackBar("يرجى إدخال البريد وكلمة المرور");
       return;
     }
 
@@ -44,68 +41,77 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
 
-      if (result['status'] == 200) {
-        String userName = result['body']['data']['user']['name'];
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.textFieldFill,
-              content: Text(
-                "أهلاً بك يا $userName",
-                style: const TextStyle(color: AppColors.burgundy),
-              ),
-            ),
-          );
-          // Navigator.pushReplacementNamed(context, '/home_page');
+      // التحقق من النجاح بناءً على رد السيرفر في الكونسول (success: true)
+      if (result['status'] == 200 || result['body']['success'] == true) {
+        
+        var responseData = result['body']['data'];
+        String? token = responseData['token'];
+        var userData = responseData['user']; // استخراج كائن المستخدم
+
+        if (userData != null) {
+          // 1. حفظ التوكن
+          if (token != null) {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('token', token);
+          }
+
+          if (mounted) {
+            // 2. تحديث البروفايدر باستخدام الموديل الموحد
+            // ملاحظة: userData هنا تحتوي مباشرة على (id, name, email...)
+            context.read<UserProvider>().setUser(UserProfileModel.fromJson(userData));
+
+            // 3. رسالة ترحيب
+            _showSnackBar("أهلاً بكِ مجدداً");
+
+            // 4. الانتقال النهائي للهوم وحذف صفحات المكدس
+            Navigator.pushNamedAndRemoveUntil(
+              context, 
+              HomeScreen.id, 
+              (route) => false
+            );
+          }
+        } else {
+          throw Exception("بيانات المستخدم غير موجودة في الرد");
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.textFieldFill,
-              content: Text(
-                style: TextStyle(color: AppColors.burgundy),
-                result['body']['message'] ?? "خطأ في بيانات الدخول",
-              ),
-            ),
-          );
+          _showSnackBar(result['body']['message'] ?? "خطأ في بيانات الدخول");
         }
       }
     } catch (e) {
+      debugPrint("❌ Login Crash: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: AppColors.textFieldFill,
-            content: Text(
-              style: TextStyle(color: AppColors.burgundy),
-              "خطأ في الشبكة: تأكد من اتصال السيرفر",
-            ),
-          ),
-        );
+        _showSnackBar("حدث خطأ أثناء الربط: $e");
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.textFieldFill,
+        content: Text(
+          message,
+          style: const TextStyle(color: AppColors.burgundy),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.burgundy,
-      // تفعيل الارتفاع عند ظهور الكيبورد
       resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        child: Container(
-          // إجبار الحاوية على أخذ طول الشاشة بالكامل لتتحرك كقطعة واحدة
+        child: SizedBox(
           height: MediaQuery.of(context).size.height,
           width: MediaQuery.of(context).size.width,
           child: Stack(
             children: [
-              // 1. الدوائر الخلفية (بنفس إحداثياتك الأصلية)
               _buildBackgroundShapes(),
-
-              // 2. المحتوى فوق الخلفية
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -115,12 +121,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 10),
                       _buildAnimatedLogo(),
                       const SizedBox(height: 20),
-                      const Text(
-                        "تسجيل الدخول",
-                        style: AppTextStyles.headerStyle,
-                      ),
+                      const Text("تسجيل الدخول", style: AppTextStyles.headerStyle),
                       const SizedBox(height: 30),
-
                       CustomTextField(
                         controller: _emailController,
                         hintText: "عنوان البريد الإلكتروني",
@@ -133,19 +135,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         icon: Icons.lock_outline,
                         isPassword: true,
                       ),
-
                       _buildForgotPassword(),
                       const SizedBox(height: 20),
-
                       _isLoading
-                          ? const CircularProgressIndicator(
-                              color: AppColors.creamBackground,
-                            )
-                          : CustomButton(
-                              text: "تسجيل الدخول",
-                              onPressed: _handleLogin,
-                            ),
-
+                          ? const CircularProgressIndicator(color: AppColors.creamBackground)
+                          : CustomButton(text: "تسجيل الدخول", onPressed: _handleLogin),
                       const SizedBox(height: 10),
                       _buildGoToRegister(),
                     ],
@@ -159,23 +153,20 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // دوال التصميم تبقى كما هي لديكِ
   Widget _buildBackgroundShapes() {
     return Stack(
       children: [
         Positioned(
-          bottom: -30,
-          right: -50,
-          top: 50,
+          bottom: -30, right: -50, top: 50,
           child: CircleAvatar(
             radius: 400,
             backgroundColor: AppColors.pinkAccent.withOpacity(0.4),
           ),
         ),
         Positioned(
-          bottom: -30,
-          right: -20,
-          top: 50,
-          child: CircleAvatar(
+          bottom: -30, right: -20, top: 50,
+          child: const CircleAvatar(
             radius: 400,
             backgroundColor: AppColors.creamBackground,
           ),
@@ -191,24 +182,13 @@ class _LoginScreenState extends State<LoginScreen> {
         shape: BoxShape.circle,
         color: Colors.white.withOpacity(0.4),
         boxShadow: [
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
-            blurRadius: 40,
-            spreadRadius: 10,
-          ),
+          BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 40, spreadRadius: 10),
         ],
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-          ),
+          Container(width: 100, height: 100, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
           AnimatedBookIcon(),
         ],
       ),
@@ -220,10 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
       alignment: Alignment.centerRight,
       child: TextButton(
         onPressed: () {},
-        child: Text(
-          "نسيت كلمة المرور؟",
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-        ),
+        child: Text("نسيت كلمة المرور؟", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
       ),
     );
   }
@@ -231,13 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildGoToRegister() {
     return TextButton(
       onPressed: () => Navigator.pushNamed(context, RegisterScreen.id),
-      child: const Text(
-        "ليس لديك حساب؟ إنشاء حساب",
-        style: TextStyle(
-          color: AppColors.burgundy,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      child: const Text("ليس لديك حساب؟ إنشاء حساب", style: TextStyle(color: AppColors.burgundy, fontWeight: FontWeight.bold)),
     );
   }
 
