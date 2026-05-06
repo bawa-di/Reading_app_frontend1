@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:reading_app_front2/conset_app.dart';
+import 'package:reading_app_front2/pages/EditProfilePage.dart';
 import 'package:reading_app_front2/provider/user_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -18,22 +19,23 @@ class SettingsScreen extends StatelessWidget {
       backgroundColor: AppColors.creamBackground,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.burgundy,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.burgundy),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textFieldFill),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "الإعدادات",
-          style: GoogleFonts.katibeh(color: AppColors.burgundy, fontSize: 28),
+          style: GoogleFonts.katibeh(color: AppColors.textFieldFill, fontSize: 28),
         ),
+        
         centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            const SizedBox(height: 10),
+            const SizedBox(height: 30),
 
             _buildSectionHeader("معلومات الحساب"),
             _buildSettingsCard(
@@ -42,7 +44,9 @@ class SettingsScreen extends StatelessWidget {
                   icon: Icons.person_outline,
                   title: "معلومات شخصية",
                   subtitle: "تعديل معلومات",
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pushNamed(context, EditProfilePage.id);
+                  },
                 ),
                 _buildDivider(),
               ],

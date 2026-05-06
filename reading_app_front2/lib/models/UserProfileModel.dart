@@ -2,10 +2,10 @@ class UserProfileModel {
   final int id;
   final String name;
   final String email;
-  final String? nickname; // جعلناه اختيارياً لأنه قد لا يصل في اللوج إن
+  final String? nickname; 
   final String? profileImg;
   final int? totalPoints;
-  final UserStats? stats; // جعلناه اختيارياً
+  final UserStats? stats; 
 
   UserProfileModel({
     required this.id,
@@ -18,15 +18,22 @@ class UserProfileModel {
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
+    // التحقق من مكان البيانات: 
+    // إذا كان الـ JSON يحتوي على مفتاح 'data' (مثل تعديل الباك إند الجديد لصفحة الشخصية)
+    // نستخدمه، وإلا نستخدم الـ json نفسه (مثل حالة تسجيل الدخول) لضمان عدم توقف الربط القديم.
+    final Map<String, dynamic> dataMap = json.containsKey('data') 
+        ? json['data'] 
+        : json;
+
     return UserProfileModel(
-      // ملاحظة: أزلنا ['data'] لأننا نمرر الجزء الخاص بالمستخدم مباشرة
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      nickname: json['nickname'], 
-      profileImg: json['profile_img'],
-      totalPoints: json['total_points'] ?? 0,
-      // لا نستدعي stats إلا إذا كانت موجودة في الـ JSON
+      id: dataMap['id'] ?? 0,
+      name: dataMap['name'] ?? '',
+      email: dataMap['email'] ?? '',
+      nickname: dataMap['nickname'], 
+      profileImg: dataMap['profile_img'],
+      totalPoints: dataMap['total_points'] ?? 0,
+      
+      // قراءة الإحصائيات إذا كانت موجودة في الـ JSON (اختياري)
       stats: json['stats'] != null ? UserStats.fromJson(json['stats']) : null,
     );
   }

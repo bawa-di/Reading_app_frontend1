@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart'; // أضفنا استيراد البروفايدر
+import 'package:provider/provider.dart';
 import 'package:reading_app_front2/conset_app.dart';
 import 'package:reading_app_front2/provider/user_provider.dart';
 
@@ -13,15 +13,20 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isChangingPassword = false;
+  @override
+  void initState() {
+    super.initState();
+    // طلب جلب البيانات عند فتح الصفحة لضمان تحديث الإحصائيات من الباك إند
+    Future.microtask(
+      () => Provider.of<UserProvider>(context, listen: false).fetchUserData(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    // الاتصال بالخزان: مراقبة حالة المستخدم والبيانات
     final userProvider = context.watch<UserProvider>();
     final user = userProvider.user;
 
-    // إذا كانت البيانات لا تزال تُجلب من السيرفر، نعرض مؤشر التحميل
     if (userProvider.isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.creamBackground,
@@ -36,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // --- الهيدر وصورة الملف الشخصي ---
             Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
@@ -90,7 +96,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: CircleAvatar(
                       radius: 60,
                       backgroundColor: Colors.grey[300],
-                      // استخدام الصورة من البروفايدر مباشرة
                       backgroundImage:
                           (user?.profileImg != null &&
                               user!.profileImg!.isNotEmpty)
@@ -111,50 +116,102 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
 
-            const SizedBox(height: 80),
+            const SizedBox(height: 70),
 
+            // --- عرض اللقب المحدث من الباك إند ---
+            Text(
+              user?.nickname ?? "",
+              style: GoogleFonts.katibeh(
+                fontSize: 26,
+                color: AppColors.burgundy,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
 
             const SizedBox(height: 20),
+
+            // --- قسم الإحصائيات (Stats) الجديد ---
+            if (user?.stats != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.burgundy.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildStatItem("منتهية", user!.stats!.finished),
+                      _buildVerticalDivider(),
+                      _buildStatItem("أقرأ الآن", user.stats!.readingNow),
+                      _buildVerticalDivider(),
+                      _buildStatItem("أريد قراءته", user.stats!.wantToRead),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 25),
+
+            // --- قائمة المعلومات الشخصية ---
             _buildProfileTile(
               title: "اسم المستخدم",
-              value: "${user?.name ?? "الاسم غير متوافر"}",
-              icon: Icons.person,
+              value: user?.name ?? "الاسم غير متوافر",
+              icon: Icons.person_outline,
             ),
-             _buildProfileTile(
+            _buildProfileTile(
               title: "البريد الإلكتروني",
               value: user?.email ?? "لا يوجد بريد",
               icon: Icons.email_outlined,
             ),
             _buildProfileTile(
-              title: "لقب المستخدم",
-
-              value: "${ user?.nickname ?? "اللقب غير متوافر"}",
-              icon: Icons.star,
-            
-            ),
-           
-            _buildProfileTile(
               title: "النقاط الإجمالية",
               value: "${user?.totalPoints ?? 0} نقطة",
-              icon: Icons.star_outline,
+              icon: Icons.emoji_events_outlined,
             ),
 
-            if (_isChangingPassword)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 10,
-                ),
-               
-                ),
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  // --- دوال الـ Widgets بقيت كما هي للحفاظ على التصميم ---
+  // ويدجت لبناء عنصر إحصائي واحد
+  Widget _buildStatItem(String label, int count) {
+    return Column(
+      children: [
+        Text(
+          "$count",
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.burgundy,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.tajawal(fontSize: 12, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
 
+  // فاصل عمودي بين الإحصائيات
+  Widget _buildVerticalDivider() {
+    return Container(height: 30, width: 1, color: Colors.grey[300]);
+  }
+
+  // ويدجت عرض المعلومات (ListTile)
   Widget _buildProfileTile({
     required String title,
     required String value,
@@ -169,8 +226,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: const [
           BoxShadow(
-            color: AppColors.burgundy,
-            blurRadius: 5,
+            color: AppColors.burgundy, // لون برغندي خفيف للظل
+            blurRadius: 10,
             offset: Offset(0, 3),
           ),
         ],
@@ -180,16 +237,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(
           title,
           textAlign: TextAlign.right,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: GoogleFonts.katibeh(color: AppColors.burgundy, fontSize: 20),
         ),
         subtitle: Text(
           value,
           textAlign: TextAlign.right,
-          style: TextStyle(color: textColor ?? Colors.black54),
+          style:  GoogleFonts.katibeh(color: AppColors.burgundy, fontSize: 20),
         ),
         trailing: Icon(icon, color: AppColors.burgundy),
       ),
     );
   }
-
-  }
+}
