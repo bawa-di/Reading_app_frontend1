@@ -23,7 +23,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   File? _pickedImage;
   bool _isLoading = false;
 
-  // استخدام المساعد الموحد لاختيار الصورة
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     try {
@@ -38,7 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
-    // 1. التحقق من الحقول الفارغة
+ 
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty) {
@@ -54,7 +53,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // 2. التحقق من تطابق كلمة المرور
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(
         context,
@@ -72,10 +70,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         imagePath: _pickedImage?.path,
       );
 
-      // 3. معالجة الرد من السيرفر (Laravel)
       if (result['status'] == 201 || result['status'] == 200) {
         if (mounted) {
-          // إظهار رسالة النجاح التي كانت محذوفة
+       
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               backgroundColor: AppColors.textFieldFill,
@@ -86,7 +83,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           );
 
-          // تأخير بسيط ليتمكن المستخدم من قراءة الرسالة قبل العودة
           Future.delayed(const Duration(seconds: 1), () {
             if (mounted) Navigator.pop(context);
           });
@@ -117,7 +113,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
         child: Container(
-          // الحفاظ على ارتفاع الشاشة لضمان تحرك الخلفية والمحتوى معاً
           height: MediaQuery.of(context).size.height,
           width: MediaQuery.of(context).size.width,
           child: Stack(

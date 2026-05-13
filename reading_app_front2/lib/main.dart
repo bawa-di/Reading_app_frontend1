@@ -2,20 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:reading_app_front2/pages/EditProfilePage.dart';
 import 'package:reading_app_front2/pages/Login%20Screen.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // تأكدي من إضافة هذا الاستيراد
+import 'package:reading_app_front2/pages/EditProfilePage.dart';
+import 'package:reading_app_front2/pages/LeaderboardScreen.dart';
 import 'package:reading_app_front2/pages/ProfileScreen.dart';
 import 'package:reading_app_front2/pages/RegisterScreen.dart';
 import 'package:reading_app_front2/pages/SettingsScreen.dart';
 import 'package:reading_app_front2/pages/home.dart';
 import 'package:reading_app_front2/pages/welcom.dart';
+import 'package:reading_app_front2/provider/leaderboard_provider.dart';
 import 'package:reading_app_front2/provider/user_provider.dart';
 
-void main() {
+void main() async {
+  // التأكد من تهيئة أدوات Flutter قبل قراءة الذاكرة
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // قراءة التوكن المحفوظ من الذاكرة الدائمة للهاتف
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? savedToken = prefs.getString('token');
+
   runApp(
-    // تغليف التطبيق بالـ MultiProvider لجعله مهيئاً هندسياً لأي إضافات مستقبلية
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => UserProvider())],
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) {
+            UserProvider provider = UserProvider();
+            // إذا وجدنا توكن محفوظ، نقوم بتعيينه في البروفايدر فوراً عند التشغيل
+            if (savedToken != null) {
+              provider.setToken(savedToken);
+            }
+            return provider;
+          },
+        ),
+        ChangeNotifierProvider(create: (_) => LeaderboardProvider()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -32,7 +53,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         textTheme: GoogleFonts.arimaTextTheme(ThemeData.light().textTheme),
       ),
-      // --- الحفاظ على إعدادات اللغة العربية الخاصة بكِ ---
+      // إعدادات اللغة العربية
       localizationsDelegates: const [
         GlobalCupertinoLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -40,17 +61,19 @@ class MyApp extends StatelessWidget {
       ],
       supportedLocales: const [Locale("ar", "AE")],
       locale: const Locale("ar", "AE"),
-      // -------------------------------------------------------
+      
+      // يمكنكِ تغيير initialRoute إلى HomeScreen.id إذا كان التوكن موجوداً لعمل Auto-Login
       initialRoute: 'WelcomePage',
+      
       routes: {
-       
         'WelcomePage': (context) => const WelcomePage(),
         LoginScreen.id: (context) => const LoginScreen(),
         RegisterScreen.id: (context) => const RegisterScreen(),
         HomeScreen.id: (context) => const HomeScreen(),
         ProfileScreen.id: (context) => const ProfileScreen(),
-         SettingsScreen.id: (context) => const SettingsScreen(),
-         EditProfilePage.id:(context) =>  EditProfilePage(),
+        SettingsScreen.id: (context) => const SettingsScreen(),
+        EditProfilePage.id: (context) => EditProfilePage(),
+        LeaderboardScreen.id: (context) => const LeaderboardScreen(),
       },
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart'; // أضفنا استيراد البروفايدر
 import 'package:reading_app_front2/conset_app.dart';
+import 'package:reading_app_front2/pages/LeaderboardScreen.dart';
 import 'package:reading_app_front2/pages/ProfileScreen.dart';
 import 'package:reading_app_front2/pages/SettingsScreen.dart';
 import 'package:reading_app_front2/provider/user_provider.dart';
@@ -216,6 +217,9 @@ class _HomeScreenState extends State<HomeScreen> {
             // رقم 0 هو موقع أيقونة الإعدادات في القائمة لديكِ
             Navigator.pushNamed(context, SettingsScreen.id);
           }
+          if(index==2){
+             Navigator.pushNamed(context,LeaderboardScreen.id);
+          }
         },
         items: const [
           BottomNavigationBarItem(
@@ -226,7 +230,10 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.favorite, color: AppColors.pinkAccent),
             label: '',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: ''),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_alt_sharp),
+            label: '',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: ''),
         ],
       ),

@@ -16,7 +16,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // طلب جلب البيانات عند فتح الصفحة لضمان تحديث الإحصائيات من الباك إند
     Future.microtask(
       () => Provider.of<UserProvider>(context, listen: false).fetchUserData(),
     );
@@ -41,7 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // --- الهيدر وصورة الملف الشخصي ---
+           
             Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
@@ -118,7 +117,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 70),
 
-            // --- عرض اللقب المحدث من الباك إند ---
             Text(
               user?.nickname ?? "",
               style: GoogleFonts.katibeh(
@@ -130,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 20),
 
-            // --- قسم الإحصائيات (Stats) الجديد ---
+         
             if (user?.stats != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -161,8 +159,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
 
             const SizedBox(height: 25),
-
-            // --- قائمة المعلومات الشخصية ---
             _buildProfileTile(
               title: "اسم المستخدم",
               value: user?.name ?? "الاسم غير متوافر",
@@ -173,20 +169,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               value: user?.email ?? "لا يوجد بريد",
               icon: Icons.email_outlined,
             ),
-            _buildProfileTile(
-              title: "النقاط الإجمالية",
-              value: "${user?.totalPoints ?? 0} نقطة",
-              icon: Icons.emoji_events_outlined,
-            ),
-
+        
             const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
-
-  // ويدجت لبناء عنصر إحصائي واحد
   Widget _buildStatItem(String label, int count) {
     return Column(
       children: [
@@ -205,13 +194,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ],
     );
   }
-
-  // فاصل عمودي بين الإحصائيات
   Widget _buildVerticalDivider() {
     return Container(height: 30, width: 1, color: Colors.grey[300]);
   }
-
-  // ويدجت عرض المعلومات (ListTile)
   Widget _buildProfileTile({
     required String title,
     required String value,
@@ -226,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: const [
           BoxShadow(
-            color: AppColors.burgundy, // لون برغندي خفيف للظل
+            color: AppColors.burgundy, 
             blurRadius: 10,
             offset: Offset(0, 3),
           ),

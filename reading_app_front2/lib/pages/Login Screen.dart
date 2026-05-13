@@ -8,11 +8,10 @@ import 'package:reading_app_front2/services/AuthService.dart';
 import 'package:reading_app_front2/widget/AnimatedBookIcon.dart';
 import 'package:reading_app_front2/widget/Custom%20Components.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:reading_app_front2/models/UserProfileModel.dart'; 
 
 class LoginScreen extends StatefulWidget {
-  static String id = 'login'; // تأكدي أن هذا المعرف مطابق لما في main.dart
+  static String id = 'login';
   const LoginScreen({super.key});
 
   @override
@@ -24,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  // --- الدالة المعدلة بالكامل ---
   void _handleLogin() async {
     String email = _emailController.text.trim();
     String password = _passwordController.text;
@@ -41,29 +41,31 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
 
-      // التحقق من النجاح بناءً على رد السيرفر في الكونسول (success: true)
-      if (result['status'] == 200 || result['body']['success'] == true) {
+      // التأكد من نجاح الطلب (كود 200 أو حقل success)
+      if (result['status'] == 200 || (result['body'] != null && result['body']['success'] == true)) {
         
         var responseData = result['body']['data'];
         String? token = responseData['token'];
-        var userData = responseData['user']; // استخراج كائن المستخدم
+        var userData = responseData['user']; 
 
         if (userData != null) {
-          // 1. حفظ التوكن
+          // 1. حفظ التوكن في ذاكرة الهاتف الدائمة للاستخدام اللاحق
           if (token != null) {
             SharedPreferences prefs = await SharedPreferences.getInstance();
             await prefs.setString('token', token);
           }
 
           if (mounted) {
-            // 2. تحديث البروفايدر باستخدام الموديل الموحد
-            // ملاحظة: userData هنا تحتوي مباشرة على (id, name, email...)
-            context.read<UserProvider>().setUser(UserProfileModel.fromJson(userData));
+            // 2. ⭐ التعديل الأهم: تحديث البروفايدر بالبيانات والتوكن معاً
+            // سيقوم هذا السطر بملء متغير الـ token داخل UserProvider فوراً
+            context.read<UserProvider>().setUser(
+              UserProfileModel.fromJson(userData),
+              userToken: token, 
+            );
 
-            // 3. رسالة ترحيب
-            _showSnackBar("أهلاً بكِ مجدداً");
+            _showSnackBar("أهلاً بكِ في دُفّة مجدداً");
 
-            // 4. الانتقال النهائي للهوم وحذف صفحات المكدس
+            // 3. الانتقال للرئيسية وحذف صفحات الدخول من الذاكرة
             Navigator.pushNamedAndRemoveUntil(
               context, 
               HomeScreen.id, 
@@ -71,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
         } else {
-          throw Exception("بيانات المستخدم غير موجودة في الرد");
+          throw Exception("لم يتم العثور على بيانات المستخدم في رد السيرفر");
         }
       } else {
         if (mounted) {
@@ -79,9 +81,9 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      debugPrint("❌ Login Crash: $e");
+      debugPrint("❌ Login Error: $e");
       if (mounted) {
-        _showSnackBar("حدث خطأ أثناء الربط: $e");
+        _showSnackBar("فشل الاتصال: تأكدي من عمل السيرفر والشبكة");
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -94,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: AppColors.textFieldFill,
         content: Text(
           message,
-          style: const TextStyle(color: AppColors.burgundy),
+          style: const TextStyle(color: AppColors.burgundy, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -153,7 +155,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // دوال التصميم تبقى كما هي لديكِ
   Widget _buildBackgroundShapes() {
     return Stack(
       children: [
