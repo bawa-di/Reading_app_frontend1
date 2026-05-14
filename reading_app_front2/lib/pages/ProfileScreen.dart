@@ -118,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 70),
 
             Text(
-              user?.nickname ?? "",
+              user?.name ?? "",
               style: GoogleFonts.katibeh(
                 fontSize: 26,
                 color: AppColors.burgundy,
