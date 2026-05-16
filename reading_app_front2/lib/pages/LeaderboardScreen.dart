@@ -57,6 +57,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         appBar: AppBar(
           elevation: 0,
           backgroundColor: AppColors.burgundy,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
           title: Text(
             "مجتمعي",
             style: GoogleFonts.katibeh(color: Colors.white, fontSize: 30),

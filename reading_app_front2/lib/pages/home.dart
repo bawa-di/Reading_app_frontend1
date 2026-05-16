@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart'; // أضفنا استيراد البروفايدر
 import 'package:reading_app_front2/conset_app.dart';
+import 'package:reading_app_front2/pages/FavoritesScreen.dart';
 import 'package:reading_app_front2/pages/LeaderboardScreen.dart';
+import 'package:reading_app_front2/pages/MyListsScreen.dart';
+import 'package:reading_app_front2/pages/MySuggestionsScreen.dart';
+import 'package:reading_app_front2/pages/NotificationsScreen.dart';
 import 'package:reading_app_front2/pages/ProfileScreen.dart';
 import 'package:reading_app_front2/pages/SettingsScreen.dart';
+import 'package:reading_app_front2/pages/SuggestBookScreen.dart';
 import 'package:reading_app_front2/provider/user_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,8 +24,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // هندسياً: نطلب من الخزان جلب البيانات مرة واحدة عند تشغيل التطبيق
-    // استخدمنا listen: false لأننا داخل initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<UserProvider>(context, listen: false).fetchUserData();
     });
@@ -40,7 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // مررنا بيانات المستخدم للهيدر
             _buildHeader(context, user, userProvider.isLoading),
-            _buildSearchBar(),
+
+            // 🟢 التعديل الجديد: استدعاء الودجت العائم الذي يجمع البحث والاشعارات
+            _buildSearchBarWithNotifications(context),
+
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Align(
@@ -58,12 +64,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // أضفنا البراميترز هنا لنعرض البيانات المستلمة من البروفايدر
+  // الهيدر رجع كما هو تماماً يا هندسة، نظيف بدون أيقونات إشعارات
   Widget _buildHeader(BuildContext context, var user, bool isLoading) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 40),
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 30),
       decoration: const BoxDecoration(
         color: AppColors.burgundy,
+
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(40),
           bottomRight: Radius.circular(40),
@@ -111,33 +118,90 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- باقي الـ Widgets (Search Bar, Continue Reading, Nav) تبقى كما هي تماماً ---
-
-  Widget _buildSearchBar() {
+  // 🟢 ويدجت جديدة تماماً: تجمع حقل البحث مع جرس الإشعارات في دائرة صغيرة عائمة بجانبه
+  Widget _buildSearchBarWithNotifications(BuildContext context) {
     return Transform.translate(
-      offset: const Offset(0, -25),
+      offset: const Offset(0, -25), // نفس الإزاحة السابقة لتبقى عائمة
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Material(
-          elevation: 5,
-          borderRadius: BorderRadius.circular(30),
-          child: TextField(
-            textAlign: TextAlign.right,
-            decoration: InputDecoration(
-              hintText: "...ابحث عن كتاب، مؤلف، أو تصنيف",
-              prefixIcon: const Icon(Icons.search, color: AppColors.pinkAccent),
-              filled: true,
-              fillColor: AppColors.textFieldFill,
-              border: OutlineInputBorder(
+        child: Row(
+          children: [
+            // 1. حقل البحث (أخذ المساحة الأكبر)
+            Expanded(
+              child: Material(
+                elevation: 5,
                 borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide.none,
+                child: TextField(
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    hintText: "البحث",
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.pinkAccent,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.textFieldFill,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+
+            const SizedBox(width: 12), // مسافة تفصل البحث عن الجرس العائم
+            // 2. 🟢 جرس الإشعارات في دائرة صغيرة عائمة وأنيقة جداً
+            Material(
+              elevation: 5, // نفس قوة ظل البحث لتناسق المظهر
+              borderRadius: BorderRadius.circular(30),
+              color: AppColors
+                  .textFieldFill, // لون الخلفية (كريمي فاتح) ليتناسق مع حقل البحث
+              child: Container(
+                width: 50, // قطر الدائرة الصغيرة
+                height: 50,
+                decoration: const BoxDecoration(shape: BoxShape.circle),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.notifications_none_rounded,
+                        color: AppColors
+                            .pinkAccent, // استخدمنا لون الـ pink لتأكيد أهمية الجرس
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        Navigator.pushNamed(context, NotificationsScreen.id);
+                      },
+                    ),
+                    // نقطة التنبيه الحمراء فوق الجرس العائم
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.pinkAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 8,
+                          minHeight: 8,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  // --- باقي الـ Widgets (Continue Reading, Bottom Nav) تبقى كما هي تماماً ---
 
   Widget _buildContinueReading() {
     return Container(
@@ -217,24 +281,43 @@ class _HomeScreenState extends State<HomeScreen> {
             // رقم 0 هو موقع أيقونة الإعدادات في القائمة لديكِ
             Navigator.pushNamed(context, SettingsScreen.id);
           }
-          if(index==2){
-             Navigator.pushNamed(context,LeaderboardScreen.id);
+
+          if (index == 1) {
+            Navigator.pushNamed(context, MySuggestionsScreen.id);
+          }
+          if (index == 2) {
+            Navigator.pushNamed(context, FavoritesScreen.id);
+          }
+          if (index == 3) {
+            Navigator.pushNamed(context, MyListsScreen.id);
+          }
+          if (index == 4) {
+            Navigator.pushNamed(context, LeaderboardScreen.id);
           }
         },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),
-            label: '',
+            label: 'الإعدادات',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.lightbulb_outline_sharp),
+            label: 'اقتراحات',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite, color: AppColors.pinkAccent),
-            label: '',
+            label: 'المفضلة',
           ),
+
+          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'القوائم'),
           BottomNavigationBarItem(
             icon: Icon(Icons.people_alt_sharp),
-            label: '',
+            label: 'مجتمعي',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: ''),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_filled),
+            label: 'الرئيسية',
+          ),
         ],
       ),
     );

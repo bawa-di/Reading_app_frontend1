@@ -17,6 +17,13 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.burgundy,
+        toolbarHeight: 70,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios,

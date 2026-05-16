@@ -67,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         IconButton(
                           icon: const Icon(
-                            Icons.arrow_back,
+                            Icons.arrow_back_ios_new_rounded,
                             color: AppColors.textFieldFill,
                           ),
                           onPressed: () => Navigator.pop(context),

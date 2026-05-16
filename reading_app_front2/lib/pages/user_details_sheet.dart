@@ -22,7 +22,7 @@ class UserDetailsSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
       decoration: const BoxDecoration(
-        color: AppColors.creamBackground,
+        color: AppColors.textFieldFill,
         borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
       ),
       child: FutureBuilder<Map<String, dynamic>?>(
