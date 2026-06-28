@@ -4,7 +4,7 @@ import 'dart:developer';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String _baseUrl = "http://192.168.34.252:8000/api";
+  static const String _baseUrl = "http://192.168.34.216:8000/api";
 
   // --- دالة تسجيل حساب جديد ---
   Future<Map<String, dynamic>> registerUser({

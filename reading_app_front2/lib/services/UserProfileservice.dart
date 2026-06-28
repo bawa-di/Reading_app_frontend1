@@ -6,7 +6,7 @@ import 'package:reading_app_front2/models/UserProfileModel.dart';
 import 'package:http_parser/http_parser.dart';
 
 class UserProfileService {
-  final String baseUrl = "http://192.168.34.252:8000/api";
+  final String baseUrl = "http://192.168.34.216:8000/api";
 
   Future<UserProfileModel?> getUserInfo() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

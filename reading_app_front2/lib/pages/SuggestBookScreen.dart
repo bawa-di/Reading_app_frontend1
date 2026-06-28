@@ -1,187 +1,280 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:reading_app_front2/conset_app.dart'; // ملف الألوان الخاص بكِ
+import 'package:provider/provider.dart'; // مضاف لاستدعاء البروفايدرز
+import 'package:reading_app_front2/conset_app.dart';
+import 'package:reading_app_front2/provider/SuggestionProvider.dart';
+import 'package:reading_app_front2/provider/user_provider.dart'; // مضاف لجلب التوكن
 
-class SuggestBookBottomSheet extends StatefulWidget {
-  final int? relatedBookId; 
+class BookSuggestionSheet extends StatefulWidget {
+  final int? relatedBookId; // معرف الكتاب الحالي لربطه بالباك إند
 
-  const SuggestBookBottomSheet({super.key, this.relatedBookId});
-
-  static void show(BuildContext context, {int? relatedBookId}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // نعم نتركها true لكن التحكم سيكون من الحاوية بالأسفل
-      backgroundColor: Colors.transparent, 
-      // هذا السطر يمنع سحبها لأعلى الشاشة كاملة
-      enableDrag: true, 
-      builder: (context) => SuggestBookBottomSheet(relatedBookId: relatedBookId),
-    );
-  }
+  const BookSuggestionSheet({super.key, this.relatedBookId});
 
   @override
-  State<SuggestBookBottomSheet> createState() => _SuggestBookBottomSheetState();
+  State<BookSuggestionSheet> createState() => _BookSuggestionSheetState();
 }
 
-class _SuggestBookBottomSheetState extends State<SuggestBookBottomSheet> {
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _authorController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
+class _BookSuggestionSheetState extends State<BookSuggestionSheet> {
+  // 🕹️ وحدات التحكم بالنصوص لاستخراج القيم عند الحفظ
   final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _authorController = TextEditingController();
+  final _descController = TextEditingController();
 
   @override
   void dispose() {
     _titleController.dispose();
     _authorController.dispose();
-    _descriptionController.dispose();
+    _descController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      // الـ Widget السحرية التي تجبر القائمة على أخذ نصف الشاشة بالضبط مهما حدث
-      child: FractionallySizedBox(
-        heightFactor: 0.55, // 0.55 يعني تظهر فوق النصف بقليل جداً لتستوعب الكيبورد دون أن تصبح واجهة كاملة
-        child: Container(
-          decoration: const BoxDecoration(
-            color: AppColors.creamBackground,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(25),
-              topRight: Radius.circular(25),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-          child: Column(
-            children: [
-              // مؤشر السحب
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 10),
+    // مراقبة حالة التحميل من البروفايدر لتغيير شكل الزر
+    final suggestionProvider = context.watch<SuggestionProvider>();
 
-              // العنوان وزر الإغلاق
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "اقترح كتاباً جديداً",
-                    style: GoogleFonts.tajawal(
-                      fontSize: 16, 
-                      fontWeight: FontWeight.bold, 
-                      color: AppColors.burgundy
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        decoration: const BoxDecoration(
+          color: AppColors.creamBackground, // الخلفية الكريمية العتيقة للتطبيق
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(28),
+            topRight: Radius.circular(28),
+          ),
+        ),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 🔘 مؤشر السحب العلوي اللطيف لمنح النافذة مظهراً مرناً
+                Center(
+                  child: Container(
+                    width: 50,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[400],
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.grey, size: 20),
-                  )
-                ],
-              ),
-              const SizedBox(height: 10),
+                ),
+                const SizedBox(height: 20),
 
-              // جعل الحقول بداخل النصف منزلقة
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        _buildBottomSheetField(
-                          controller: _titleController,
-                          hint: "عنوان الكتاب *",
-                          icon: Icons.book_outlined,
-                          validator: (val) => (val == null || val.trim().isEmpty) ? "هذا الحقل مطلوب" : null,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildBottomSheetField(
-                          controller: _authorController,
-                          hint: "اسم المؤلف *",
-                          icon: Icons.person_outline_rounded,
-                          validator: (val) => (val == null || val.trim().isEmpty) ? "هذا الحقل مطلوب" : null,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildBottomSheetField(
-                          controller: _descriptionController,
-                          hint: "نبذة بسيطة (اختياري)",
-                          icon: Icons.notes_rounded,
-                          maxLines: 2, // قللنا الأسطر قليلاً لضمان المساحة
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                Navigator.pop(context); 
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.burgundy,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                // 📝 العنوان الرئيسي للنافذة
+                Row(
+                  children: [
+                    const Icon(Icons.auto_stories_rounded, color: AppColors.burgundy, size: 24),
+                    const SizedBox(width: 8),
+                    Text(
+                      "اقترح كتاباً جديداً",
+                      style: GoogleFonts.tajawal(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.burgundy,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "شاركينا عناوينك المفضلة لإضافتها إلى رفوف تطبيق جليس.",
+                  style: GoogleFonts.tajawal(fontSize: 12, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 24),
+
+                // 🛑 1. حقل إدخال عنوان الكتاب (إجباري)
+                _buildLabel("عنوان الكتاب المقترح *"),
+                TextFormField(
+                  controller: _titleController,
+                  textDirection: TextDirection.rtl,
+                  style: GoogleFonts.tajawal(fontSize: 14),
+                  decoration: _buildInputDecoration("مثال: أرض زيكولا"),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'الرجاء إدخال عنوان الكتاب';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // ✍️ 2. حقل إدخال اسم المؤلف (إجباري)
+                _buildLabel("اسم الكاتب / المؤلف *"),
+                TextFormField(
+                  controller: _authorController,
+                  textDirection: TextDirection.rtl,
+                  style: GoogleFonts.tajawal(fontSize: 14),
+                  decoration: _buildInputDecoration("مثال: عمرو عبد الحميد"),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'الرجاء إدخال اسم المؤلف';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // 💬 3. حقل نبذة عن الكتاب أو سبب الاقتراح (اختياري)
+                _buildLabel("نبذة أو سبب الاقتراح (اختياري)"),
+                TextFormField(
+                  controller: _descController,
+                  maxLines: 3,
+                  textDirection: TextDirection.rtl,
+                  style: GoogleFonts.tajawal(fontSize: 14),
+                  decoration: _buildInputDecoration("اكتبي لمحة بسيطة عن قصته أو لماذا تنصحين به..."),
+                ),
+                const SizedBox(height: 28),
+
+                // 🚀 4. زر التأكيد والإرسال الذكي (يتغير مؤشر تحميل عند الإرسال)
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: suggestionProvider.isLoading
+                        ? null // تعطيل الزر أثناء التحميل لمنع التكرار
+                        : () {
+                            if (_formKey.currentState!.validate()) {
+                              _sendSuggestion();
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.burgundy,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 2,
+                    ),
+                    child: suggestionProvider.isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
                             ),
-                            child: Text(
-                              "إرسال الاقتراح",
-                              style: GoogleFonts.tajawal(fontSize: 14, fontWeight: FontWeight.bold),
+                          )
+                        : Text(
+                            "إرسال الاقتراح",
+                            style: GoogleFonts.tajawal(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildBottomSheetField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      validator: validator,
-      textAlign: TextAlign.right,
-      style: GoogleFonts.tajawal(fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-        prefixIcon: Icon(icon, color: AppColors.burgundy.withOpacity(0.6), size: 18),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
+  // ويجيت نصوص العناوين الصغيرة فوق الحقول لترتيب المظهر البصري
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6, right: 4),
+      child: Text(
+        text,
+        style: GoogleFonts.tajawal(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.burgundy, width: 1.2),
-        ),
-        errorStyle: const TextStyle(fontSize: 11),
       ),
     );
+  }
+
+  // ستايل الحقول (Input Decoration) الأنيق والموحد بالكامل
+  InputDecoration _buildInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.tajawal(color: Colors.grey[400], fontSize: 13),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      filled: true,
+      fillColor: Colors.white,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.burgundy, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
+    );
+  }
+
+  // 🎯 دالة الربط الحقيقية مع الـ SuggestionProvider الخاص بكِ
+  void _sendSuggestion() async {
+    // 1. جلب التوكن من الـ UserProvider لمعرفة القارئة المفترحة
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final token = userProvider.token;
+
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرجاء تسجيل الدخول أولاً لإرسال اقتراح.')),
+      );
+      return;
+    }
+
+    // 2. استدعاء البروفايدر لتنفيذ الطلب وتمرير النصوص الحية
+    final provider = Provider.of<SuggestionProvider>(context, listen: false);
+    
+    final result = await provider.sendBookSuggestion(
+      token: token,
+      title: _titleController.text.trim(),
+      author: _authorController.text.trim(),
+      description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+      relatedBookId: widget.relatedBookId,
+    );
+
+    // 3. معالجة النتيجة بناءً على الـ Map الراجع من السيرفر
+    // (افترضت هنا أن السيرفر يرجع نجاحاً بناءً على كود الحالة، يمكنكِ مطابقتها مع رد دالة السيرفر لديكِ)
+    if (result['success'] == true || result.containsKey('id')) { 
+      if (!mounted) return;
+      
+      // إغلاق نافذة الـ BottomSheet بنجاح
+      Navigator.pop(context);
+
+      // إظهار رسالة النجاح الأنيقة بلون البرغندي
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message'] ?? 'شكرًا لكِ! تم إرسال اقتراحكِ للمدير بنجاح.',
+            style: GoogleFonts.tajawal(color: AppColors.burgundy, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: AppColors.pinkAccent,
+        ),
+      );
+    } else {
+      if (!mounted) return;
+      // إظهار رسالة خطأ في حال فشلت العملية بالخلفية
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message'] ?? 'عذرًا، فشل إرسال الاقتراح. يرجى المحاولة مجددًا.',
+            style: GoogleFonts.tajawal(color: Colors.white),
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 }

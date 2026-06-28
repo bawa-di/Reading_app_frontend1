@@ -1,35 +1,82 @@
 import 'dart:convert';
-import 'dart:io'; 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reading_app_front2/models/UserProfileModel.dart';
 import 'package:reading_app_front2/services/UserProfileService.dart';
 import 'package:reading_app_front2/services/AuthService.dart';
 
 class UserProvider with ChangeNotifier {
+  // --- المتغيرات ---
   UserProfileModel? _user;
-  String? _token; // - إضافة متغير لحفظ توكن المصادقة
+  String? _token;
   bool _isLoading = false;
+  bool _hasNewNotification = false;
 
+  // --- الـ Getters ---
   UserProfileModel? get user => _user;
-  String? get token => _token; // - جلب التوكن لاستخدامه في الخدمات الأخرى
+  String? get token => _token;
   bool get isLoading => _isLoading;
+  bool get hasNewNotification => _hasNewNotification;
 
-  // --- دالة تعيين المستخدم والتوكن (تُستدعى عند تسجيل الدخول) ---
-  void setUser(UserProfileModel newUser, {String? userToken}) {
-    _user = newUser;
-    if (userToken != null) {
-      _token = userToken; // - تخزين التوكن القادم من السيرفر
-    }
-    notifyListeners(); 
-  }
-
-  // --- دالة تعيين التوكن منفصلاً (إذا لزم الأمر) ---
-  void setToken(String newToken) {
-    _token = newToken;
+  // --- دالة التنظيف الموحدة (Reset) ---
+  // يتم استدعاؤها عند تسجيل الخروج أو حذف الحساب لضمان عدم وجود بيانات عالقة
+  void clearUserData() {
+    _user = null;
+    _token = null;
+    _hasNewNotification = false;
     notifyListeners();
   }
 
-  // --- دالة تحديث بيانات الملف الشخصي ---
+  // --- إدارة الإشعارات ---
+  void setNotificationStatus(bool status) {
+    _hasNewNotification = status;
+    notifyListeners();
+  }
+
+  // --- إدارة التوكن ---
+  Future<void> loadTokenFromPrefs() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('token');
+    notifyListeners();
+  }
+
+  void setToken(String newToken) async {
+    _token = newToken;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', newToken);
+    notifyListeners();
+  }
+
+  // --- تعيين المستخدم ---
+  Future<void> setUser(UserProfileModel newUser, {String? userToken}) async {
+    _user = newUser;
+    if (userToken != null) {
+      _token = userToken;
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', userToken);
+    }
+    notifyListeners();
+  }
+
+  // --- جلب بيانات المستخدم من السيرفر ---
+  Future<void> fetchUserData() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final updatedUser = await UserProfileService().getUserInfo();
+      if (updatedUser != null) {
+        _user = updatedUser;
+      }
+    } catch (e) {
+      print("Fetch Error: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // --- تحديث بيانات الملف الشخصي ---
   Future<String?> updateUserData({
     String? newName,
     String? newEmail,
@@ -40,7 +87,6 @@ class UserProvider with ChangeNotifier {
   }) async {
     _isLoading = true;
     notifyListeners();
-
     try {
       final response = await UserProfileService().updateProfile(
         name: newName,
@@ -50,14 +96,12 @@ class UserProvider with ChangeNotifier {
         passwordConfirmation: confirmPassword,
         imageFile: newImage,
       );
-
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200 && data['success'] == true) {
-        await fetchUserData(); 
-        return null; 
+        await fetchUserData();
+        return null;
       } else {
-        return data['message'] ?? "فشل التحديث، يرجى المحاولة لاحقاً";
+        return data['message'] ?? "فشل التحديث";
       }
     } catch (e) {
       return "خطأ في الاتصال بالسيرفر";
@@ -67,68 +111,45 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  // --- دالة جلب بيانات المستخدم من السيرفر ---
-  Future<void> fetchUserData() async {
-    _isLoading = true;
-    notifyListeners(); 
-
-    try {
-      final updatedUser = await UserProfileService().getUserInfo();
-      if (updatedUser != null) {
-        _user = updatedUser;
-      }
-    } catch (e) {
-      print("Fetch Error: $e");
-    } finally {
-      _isLoading = false;
-      notifyListeners(); 
-    }
-  }
-
-  // --- دالة تسجيل الخروج (تعديل لمسح التوكن) ---
+  // --- تسجيل الخروج ---
   Future<String?> logout() async {
     _isLoading = true;
     notifyListeners();
-
     try {
       final result = await AuthService().logoutUser();
-
-      // - مسح البيانات والتوكن عند تسجيل الخروج أو حدوث خطأ 401
       if (result['status'] == 200 || result['status'] == 401) {
-        _user = null; 
-        _token = null; // تصفير التوكن لضمان أمن التطبيق
-        return null; 
-      } else {
-        return result['body']['message'] ?? "حدث خطأ أثناء تسجيل الخروج";
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.remove('token');
+        clearUserData(); // تصفير كامل للبيانات
+        return null;
       }
+      return result['body']['message'] ?? "حدث خطأ أثناء تسجيل الخروج";
     } catch (e) {
-      return "فشل الاتصال، جربي مرة أخرى";
+      return "فشل الاتصال";
     } finally {
       _isLoading = false;
-      notifyListeners(); 
+      notifyListeners();
     }
   }
 
-  // --- دالة حذف الحساب النهائية ---
+  // --- حذف الحساب ---
   Future<String?> deleteUserAccount() async {
     _isLoading = true;
     notifyListeners();
-
     try {
       final result = await AuthService().deleteAccount();
-
       if (result['status'] == 200) {
-        _user = null; 
-        _token = null; // مسح التوكن عند حذف الحساب
-        return null; 
-      } else {
-        return result['body']['message'] ?? "فشل حذف الحساب من السيرفر";
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.remove('token');
+        clearUserData(); // تصفير كامل للبيانات
+        return null;
       }
+      return result['body']['message'] ?? "فشل حذف الحساب";
     } catch (e) {
-      return "حدث خطأ غير متوقع أثناء محاولة الحذف";
+      return "حدث خطأ أثناء الحذف";
     } finally {
       _isLoading = false;
-      notifyListeners(); 
+      notifyListeners();
     }
   }
 }

@@ -5,7 +5,7 @@ import 'package:reading_app_front2/services/leaderboard_service.dart';
 class LeaderboardProvider with ChangeNotifier {
   final LeaderboardService _service = LeaderboardService();
   
-  List<LeaderboardUser> _allUsers = [];      
+  List<LeaderboardUser> _allUsers = [];        
   List<LeaderboardUser> _followingUsers = []; 
   List<LeaderboardUser> _followersUsers = []; 
 
@@ -26,13 +26,11 @@ class LeaderboardProvider with ChangeNotifier {
 
   // --- جلب تفاصيل مستخدم محدد ---
   Future<Map<String, dynamic>?> fetchUserDetails(String token, int userId) async {
-    // نطلب البيانات من السيرفر (ستحتوي على العدادات المحدثة stats)
     return await _service.getFollowedUserDetails(token, userId);
   }
 
-  // --- دالة جديدة لتحديث العدادات بعد إضافة كتاب ---
+  // --- دالة تحديث العدادات بعد إضافة كتاب ---
   Future<void> refreshStatsAfterAction(String token, int userId) async {
-    // هذه الدالة تجبر الواجهة على إعادة طلب البيانات
     notifyListeners(); 
   }
 
@@ -43,6 +41,10 @@ class LeaderboardProvider with ChangeNotifier {
     notifyListeners();
     try {
       final List<Map<String, dynamic>> rawAll = await _service.getUsersProgress(token);
+      
+      // أمر الطباعة للتأكد من البيانات الخام القادمة من السيرفر
+      print("--- [DEBUG] بيانات السيرفر الخام للقائمة: $rawAll ---");
+
       final List<Map<String, dynamic>> rawFollowing = await _service.getFollowing(token);
 
       _allUsers = rawAll.map((json) => LeaderboardUser.fromJson(json)).toList();
@@ -53,6 +55,7 @@ class LeaderboardProvider with ChangeNotifier {
       
       if (_allUsers.isEmpty) _error = "لا توجد بيانات حالياً";
     } catch (e) {
+      print("Error in fetchLeaderboard: $e");
       _error = "حدث خطأ في جلب البيانات";
     } finally {
       _isLoading = false;

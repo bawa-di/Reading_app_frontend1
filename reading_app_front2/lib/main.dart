@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 🟢 أضفنا هذا الاستيراد للتحكم بنظام شريط الساعة
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -9,14 +9,22 @@ import 'package:reading_app_front2/pages/MyListsScreen.dart';
 import 'package:reading_app_front2/pages/MySuggestionsScreen.dart';
 import 'package:reading_app_front2/pages/NotificationsScreen.dart';
 import 'package:reading_app_front2/pages/SuggestBookScreen.dart';
-import 'package:shared_preferences/shared_preferences.dart'; 
+import 'package:reading_app_front2/provider/LibraryProvider.dart';
+import 'package:reading_app_front2/provider/NotificationProvider.dart';
+import 'package:reading_app_front2/provider/RatingProvider.dart';
+import 'package:reading_app_front2/provider/SuggestionProvider.dart';
+import 'package:reading_app_front2/provider/comment_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reading_app_front2/pages/EditProfilePage.dart';
 import 'package:reading_app_front2/pages/LeaderboardScreen.dart';
 import 'package:reading_app_front2/pages/ProfileScreen.dart';
 import 'package:reading_app_front2/pages/RegisterScreen.dart';
+import 'package:reading_app_front2/pages/BookDetailsScreen.dart';
 import 'package:reading_app_front2/pages/SettingsScreen.dart';
 import 'package:reading_app_front2/pages/home.dart';
 import 'package:reading_app_front2/pages/welcom.dart';
+import 'package:reading_app_front2/provider/books_provider.dart';
+import 'package:reading_app_front2/provider/favorites_provider.dart';
 import 'package:reading_app_front2/provider/leaderboard_provider.dart';
 import 'package:reading_app_front2/provider/user_provider.dart';
 
@@ -31,25 +39,50 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => BooksProvider()),
         ChangeNotifierProvider(
           create: (_) {
             UserProvider provider = UserProvider();
-            // إذا وجدنا توكن محفوظ، نقوم بتعيينه في البروفايدر فوراً عند التشغيل
             if (savedToken != null) {
               provider.setToken(savedToken);
             }
             return provider;
           },
         ),
+        // تفعيل جلب المفضلة فوراً عند الإقلاع وإلغاء خاصية التحميل الكسول Lazy
+        ChangeNotifierProvider(create: (_) => FavoritesProvider(), lazy: false),
+
+        // 🟢 التعديل الذكي هنا: إلغاء الـ Lazy وجلب مكتبة ورفوف المستخدم فوراً عند الإقلاع
+        ChangeNotifierProvider(
+          create: (_) {
+            LibraryProvider libraryProvider = LibraryProvider();
+            if (savedToken != null && savedToken.isNotEmpty) {
+              // استدعاء دالة الجلب الكاملة التي قمنا بتحديثها مسبقاً للاتصال بـ Laravel
+              libraryProvider.fetchUserLibrary(token: savedToken);
+              print(
+                "🚀 [App Launch] جاري جلب رفوف وحالات الكتب لتثبيت الأزرار...",
+              );
+            }
+            return libraryProvider;
+          },
+          lazy:
+              false, // نجبر البروفايدر على العمل فوراً دون انتظار فتح شاشة معينة
+        ),
+        ChangeNotifierProvider(create: (_) => RatingProvider()),
         ChangeNotifierProvider(create: (_) => LeaderboardProvider()),
+        ChangeNotifierProvider(create: (_) => SuggestionProvider()),
+        ChangeNotifierProvider(create: (_) => CommentProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
-      child: const MyApp(),
+      // تمرير الـ savedToken إلى الـ MyApp لعمل فحص التوجيه التلقائي
+      child: MyApp(savedToken: savedToken),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String? savedToken;
+  const MyApp({super.key, this.savedToken});
 
   @override
   Widget build(BuildContext context) {
@@ -58,17 +91,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         textTheme: GoogleFonts.arimaTextTheme(ThemeData.light().textTheme),
-        
-        // 🟢 التعديل السحري: فصل وضبط شريط الساعة والبطارية (Status Bar) على مستوى التطبيق كامل
         appBarTheme: const AppBarTheme(
           systemOverlayStyle: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent, // يجعل خلفية الساعة شفافة ومدمجة مع انسيابية الـ AppBar
-            statusBarIconBrightness: Brightness.light, // أجهزة الأندرويد: يجعل أرقام الساعة والبطارية بيضاء لتظهر فوق لون تطبيقك الغامق
-            statusBarBrightness: Brightness.dark, // أجهزة الآيفون: يجعل أرقام الساعة والبطارية بيضاء
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
           ),
         ),
       ),
-      
+
       // إعدادات اللغة العربية
       localizationsDelegates: const [
         GlobalCupertinoLocalizations.delegate,
@@ -78,8 +109,10 @@ class MyApp extends StatelessWidget {
       supportedLocales: const [Locale("ar", "AE")],
       locale: const Locale("ar", "AE"),
 
-      // يمكنكِ تغيير initialRoute إلى HomeScreen.id إذا كان التوكن موجوداً لعمل Auto-Login
-      initialRoute: 'WelcomePage',
+      // ميزة الـ Auto-Login الذكية لـ تطبيق دفة:
+      // إذا كان المستخدم يمتلك توكن مسبق، يفتح التطبيق مباشرة على شاشة الـ Home
+      // وإذا كان مستخدم جديد، يفتح على صفحة الـ WelcomePage
+      initialRoute: savedToken != null ? HomeScreen.id : 'WelcomePage',
 
       routes: {
         'WelcomePage': (context) => const WelcomePage(),
@@ -93,7 +126,8 @@ class MyApp extends StatelessWidget {
         MySuggestionsScreen.id: (context) => const MySuggestionsScreen(),
         FavoritesScreen.id: (context) => const FavoritesScreen(),
         MyListsScreen.id: (context) => const MyListsScreen(),
-        NotificationsScreen.id: (context) => const NotificationsScreen(),
+        NotificationsScreen.id: (context) => NotificationsScreen(),
+        BookDetailPage.id: (context) => const BookDetailPage(),
       },
     );
   }

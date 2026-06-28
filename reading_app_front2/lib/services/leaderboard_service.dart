@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class LeaderboardService {
   // ملاحظة: تأكدي دائماً أن IP الجهاز الحقيقي مطبق هنا ليعمل المحاكي
-  static const String baseUrl = "http://192.168.34.252:8000/api";
+  static const String baseUrl = "http://192.168.34.216:8000/api";
 
   // --- 1. جلب قائمة جميع المستخدمين (usersProgress) ---
   Future<List<Map<String, dynamic>>> getUsersProgress(String token) async {

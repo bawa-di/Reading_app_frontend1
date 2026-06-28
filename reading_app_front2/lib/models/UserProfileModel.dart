@@ -17,10 +17,24 @@ class UserProfileModel {
     this.stats,
   });
 
+  // 🛠️ التعديل الذكي لتركيب مسار الـ public/storage الصحيح بناءً على بنية مجلداتكِ
+  String? get fullProfileImgUrl {
+    if (profileImg == null || profileImg!.isEmpty) return null;
+    
+    final String serverIp = "http://192.168.34.216:8000"; 
+    
+    // تنظيف السلاش الأول إن وجد
+    String cleanPath = profileImg!.startsWith('/') ? profileImg!.substring(1) : profileImg!;
+    
+    // 🔄 بما أن المجلد داخل public/storage، نتأكد من إضافة كلمة storage للمسار
+    if (!cleanPath.startsWith('storage/')) {
+      cleanPath = 'storage/$cleanPath';
+    }
+    
+    return "$serverIp/$cleanPath";
+  }
+
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
-    // التحقق من مكان البيانات: 
-    // إذا كان الـ JSON يحتوي على مفتاح 'data' (مثل تعديل الباك إند الجديد لصفحة الشخصية)
-    // نستخدمه، وإلا نستخدم الـ json نفسه (مثل حالة تسجيل الدخول) لضمان عدم توقف الربط القديم.
     final Map<String, dynamic> dataMap = json.containsKey('data') 
         ? json['data'] 
         : json;
@@ -32,8 +46,6 @@ class UserProfileModel {
       nickname: dataMap['nickname'], 
       profileImg: dataMap['profile_img'],
       totalPoints: dataMap['total_points'] ?? 0,
-      
-      // قراءة الإحصائيات إذا كانت موجودة في الـ JSON (اختياري)
       stats: json['stats'] != null ? UserStats.fromJson(json['stats']) : null,
     );
   }
