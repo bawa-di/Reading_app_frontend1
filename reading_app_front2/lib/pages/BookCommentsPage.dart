@@ -15,15 +15,14 @@ class BookCommentsPage extends StatefulWidget {
 
 class _BookCommentsPageState extends State<BookCommentsPage> {
   final TextEditingController _commentController = TextEditingController();
+  final Set<int> _expandedComments = {};
 
-  // 🛠️ متغيرات التحكم بوضع الرد على التعليقات
-  int? _replyingToCommentId;   // لتخزين الـ ID الخاص بالتعليق الذي نرد عليه
-  String? _replyingToUserName; // لتخزين اسم المستخدم المراد الرد عليه
+  int? _replyingToCommentId;
+  String? _replyingToUserName;
 
   @override
   void initState() {
     super.initState();
-    // 🔄 جلب التعليقات تلقائياً من السيرفر فور الدخول للصفحة
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final token = Provider.of<UserProvider>(context, listen: false).token;
       if (token != null) {
@@ -37,13 +36,16 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
 
   @override
   void dispose() {
-    _commentController.dispose(); // تنظيف الذاكرة عند الخروج من الصفحة
+    _commentController.dispose();
     super.dispose();
   }
 
-  // 🗑️ دالة لإظهار تأكيد الحذف ومن ثم استدعاء البروفايدر لتحديث الواجهة فوراً
-  void _showDeleteDialog(BuildContext context, int id, CommentProvider provider, String token) {
-    // 1️⃣ أخذ نسخة آمنة من الـ ScaffoldMessenger قبل تدمير أي سياق (Context)
+  void _showDeleteDialog(
+    BuildContext context,
+    int id,
+    CommentProvider provider,
+    String token,
+  ) {
     final messenger = ScaffoldMessenger.of(context);
 
     showDialog(
@@ -53,10 +55,15 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: AppColors.creamBackground,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Text(
               'حذف المراجعة',
-              style: TextStyle(color: AppColors.burgundy, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.burgundy,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             content: const Text(
               'هل أنتِ متأكدة من رغبتكِ في حذف هذه المراجعة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',
@@ -65,25 +72,27 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+                child: const Text(
+                  'إلغاء',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.burgundy,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onPressed: () async {
-                  // إغلاق الـ Dialog أولاً باستخدام الـ context الخاص به
-                  Navigator.pop(dialogContext); 
+                  Navigator.pop(dialogContext);
 
-                  // إتمام عملية الحذف من السيرفر والانتظار
                   bool success = await provider.deleteComment(
                     commentId: id,
                     token: token,
                   );
 
-                  // 2️⃣ حماية إضافية: التحقق من أن الصفحة الأصلية لا تزال معروضة ومستقرة
                   if (!mounted) return;
 
                   if (success) {
@@ -105,9 +114,15 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
     );
   }
 
-  // ✨ نافذة منبثقة لتعديل التعليق متناسقة مع ألوان "دُفّة"
-  void _showEditBottomSheet(BuildContext context, dynamic item, CommentProvider provider, String token) {
-    final TextEditingController editController = TextEditingController(text: item.content);
+  void _showEditBottomSheet(
+    BuildContext context,
+    dynamic item,
+    CommentProvider provider,
+    String token,
+  ) {
+    final TextEditingController editController = TextEditingController(
+      text: item.content,
+    );
     final messenger = ScaffoldMessenger.of(context);
 
     showModalBottomSheet(
@@ -144,15 +159,15 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                   decoration: BoxDecoration(
                     color: AppColors.textFieldFill,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.burgundy.withOpacity(0.3)),
+                    border: Border.all(
+                      color: AppColors.burgundy.withOpacity(0.3),
+                    ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TextField(
                     controller: editController,
                     maxLines: null,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                    ),
+                    decoration: const InputDecoration(border: InputBorder.none),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -163,13 +178,15 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.burgundy,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         onPressed: () async {
                           if (editController.text.trim().isEmpty) return;
-                          Navigator.pop(bottomSheetContext); // إغلاق النافذة
-                          
+                          Navigator.pop(bottomSheetContext);
+
                           bool success = await provider.editComment(
                             commentId: item.id,
                             content: editController.text,
@@ -190,7 +207,10 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                     const SizedBox(width: 12),
                     TextButton(
                       onPressed: () => Navigator.pop(bottomSheetContext),
-                      child: const Text("إلغاء", style: TextStyle(color: Colors.grey)),
+                      child: const Text(
+                        "إلغاء",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                   ],
                 ),
@@ -215,13 +235,13 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
             "مراجعات القرّاء",
             style: TextStyle(color: AppColors.textFieldFill),
           ),
-           shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(30),
-            bottomRight: Radius.circular(30),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
           ),
-        ),
-        toolbarHeight: 70,
+          toolbarHeight: 70,
           titleTextStyle: AppTextStyles.headerStyle.copyWith(fontSize: 20),
           elevation: 0,
           backgroundColor: AppColors.burgundy,
@@ -245,34 +265,38 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                       ),
                     )
                   : commentProvider.errorMessage.isNotEmpty
-                      ? Center(
-                          child: Text(
-                            commentProvider.errorMessage,
-                            style: const TextStyle(color: Colors.red, fontSize: 14),
-                          ),
-                        )
-                      : commentProvider.comments.isEmpty
-                          ? const Center(
-                              child: Text(
-                                "لا توجد تعليقات بعد.\nكن أول من يشارك رأيه!",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppColors.burgundy,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              itemCount: commentProvider.comments.length,
-                              itemBuilder: (context, index) {
-                                final comment = commentProvider.comments[index];
-                                return _buildCommentCard(context, comment, commentProvider);
-                              },
-                            ),
+                  ? Center(
+                      child: Text(
+                        commentProvider.errorMessage,
+                        style: const TextStyle(color: Colors.red, fontSize: 14),
+                      ),
+                    )
+                  : commentProvider.comments.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "لا توجد تعليقات بعد.\nكن أول من يشارك رأيه!",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.burgundy,
+                          fontSize: 16,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      itemCount: commentProvider.comments.length,
+                      itemBuilder: (context, index) {
+                        final comment = commentProvider.comments[index];
+                        return _buildCommentCard(
+                          context,
+                          comment,
+                          commentProvider,
+                        );
+                      },
+                    ),
             ),
             _buildCommentInputField(context, commentProvider),
           ],
@@ -281,38 +305,43 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
     );
   }
 
-  Widget _buildCommentCard(BuildContext context, CommentModel comment, CommentProvider commentProvider) {
+  Widget _buildCommentCard(
+    BuildContext context,
+    CommentModel comment,
+    CommentProvider commentProvider,
+  ) {
     final token = Provider.of<UserProvider>(context, listen: false).token;
-    final currentUserId = Provider.of<UserProvider>(context, listen: false).user?.id;
+    final currentUserId = Provider.of<UserProvider>(
+      context,
+      listen: false,
+    ).user?.id;
     final isMyComment = comment.userId == currentUserId;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.only(
-        right: isMyComment ? 40 : 0,
-        left: isMyComment ? 0 : 40,
+        right: isMyComment ? 0 : 40,
+        left: isMyComment ? 40 : 0,
       ),
       child: Column(
-        crossAxisAlignment: isMyComment ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isMyComment
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.end,
         children: [
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: isMyComment ? AppColors.burgundy : AppColors.textFieldFill,
               borderRadius: BorderRadius.only(
-                topRight: const Radius.circular(16),
-                topLeft: const Radius.circular(16),
-                bottomLeft: isMyComment ? const Radius.circular(16) : const Radius.circular(0),
-                bottomRight: isMyComment ? const Radius.circular(0) : const Radius.circular(16),
+                topRight: isMyComment
+                    ? const Radius.circular(0)
+                    : const Radius.circular(16),
+                topLeft: isMyComment
+                    ? const Radius.circular(16)
+                    : const Radius.circular(0),
+                bottomLeft: const Radius.circular(16),
+                bottomRight: const Radius.circular(16),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.burgundy.withOpacity(0.03),
-                  spreadRadius: 1,
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,13 +351,21 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundColor: isMyComment ? Colors.white.withOpacity(0.2) : AppColors.burgundy.withOpacity(0.2),
-                      backgroundImage: comment.userImg != null ? NetworkImage(comment.userImg!) : null,
+                      backgroundColor: isMyComment
+                          ? Colors.white.withOpacity(0.2)
+                          : AppColors.burgundy.withOpacity(0.2),
+                      backgroundImage: comment.userImg != null
+                          ? NetworkImage(comment.userImg!)
+                          : null,
                       child: comment.userImg == null
                           ? Text(
-                              comment.userName.isNotEmpty ? comment.userName[0].toUpperCase() : 'U',
+                              comment.userName.isNotEmpty
+                                  ? comment.userName[0].toUpperCase()
+                                  : 'U',
                               style: TextStyle(
-                                color: isMyComment ? Colors.white : AppColors.burgundy,
+                                color: isMyComment
+                                    ? Colors.white
+                                    : AppColors.burgundy,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
                               ),
@@ -348,7 +385,9 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                     Text(
                       comment.createdAt,
                       style: TextStyle(
-                        color: isMyComment ? Colors.white70 : AppColors.burgundy.withOpacity(0.6),
+                        color: isMyComment
+                            ? Colors.white70
+                            : AppColors.burgundy.withOpacity(0.6),
                         fontSize: 10,
                       ),
                     ),
@@ -373,7 +412,7 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: isMyComment
                 ? Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Container(
                         decoration: BoxDecoration(
@@ -383,9 +422,18 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                         child: IconButton(
                           constraints: const BoxConstraints(),
                           padding: const EdgeInsets.all(6),
-                          icon: const Icon(Icons.edit_rounded, size: 16, color: AppColors.burgundy),
+                          icon: const Icon(
+                            Icons.edit_rounded,
+                            size: 16,
+                            color: AppColors.burgundy,
+                          ),
                           onPressed: () {
-                            _showEditBottomSheet(context, comment, commentProvider, token!);
+                            _showEditBottomSheet(
+                              context,
+                              comment,
+                              commentProvider,
+                              token!,
+                            );
                           },
                         ),
                       ),
@@ -398,9 +446,18 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                         child: IconButton(
                           constraints: const BoxConstraints(),
                           padding: const EdgeInsets.all(6),
-                          icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.burgundy),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 16,
+                            color: AppColors.burgundy,
+                          ),
                           onPressed: () {
-                            _showDeleteDialog(context, comment.id, commentProvider, token!);
+                            _showDeleteDialog(
+                              context,
+                              comment.id,
+                              commentProvider,
+                              token!,
+                            );
                           },
                         ),
                       ),
@@ -414,8 +471,15 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                       });
                       FocusScope.of(context).requestFocus();
                     },
-                    icon: const Icon(Icons.reply_rounded, size: 14, color: AppColors.burgundy),
-                    label: const Text('رد', style: TextStyle(color: AppColors.burgundy, fontSize: 12)),
+                    icon: const Icon(
+                      Icons.reply_rounded,
+                      size: 14,
+                      color: AppColors.burgundy,
+                    ),
+                    label: const Text(
+                      'رد',
+                      style: TextStyle(color: AppColors.burgundy, fontSize: 12),
+                    ),
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(50, 20),
@@ -425,130 +489,174 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
           ),
           if (comment.replies.isNotEmpty) ...[
             const SizedBox(height: 4),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: comment.replies.length,
-              itemBuilder: (context, rIndex) {
-                final reply = comment.replies[rIndex];
-                final isMyReply = reply.userId == currentUserId;
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  if (_expandedComments.contains(comment.id)) {
+                    _expandedComments.remove(comment.id);
+                  } else {
+                    _expandedComments.add(comment.id);
+                  }
+                });
+              },
+              child: Text(
+                _expandedComments.contains(comment.id)
+                    ? "إخفاء الردود"
+                    : "عرض ${comment.replies.length} ردود",
+                style: const TextStyle(
+                  color: AppColors.burgundy,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (_expandedComments.contains(comment.id)) ...[
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: comment.replies.length,
+                itemBuilder: (context, rIndex) {
+                  final reply = comment.replies[rIndex];
+                  final isMyReply = reply.userId == currentUserId;
 
-                return Container(
-                  margin: const EdgeInsets.only(right: 16, bottom: 8),
-                  child: Column(
-                    crossAxisAlignment: isMyReply ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMyReply ? AppColors.burgundy.withOpacity(0.85) : AppColors.burgundy.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircleAvatar(
-                                  radius: 12,
-                                  backgroundColor: isMyReply ? Colors.white.withOpacity(0.2) : AppColors.burgundy,
-                                  backgroundImage: reply.userImg != null ? NetworkImage(reply.userImg!) : null,
-                                  child: reply.userImg == null
-                                      ? Text(
-                                          reply.userName.isNotEmpty ? reply.userName[0].toUpperCase() : 'R',
-                                          style: const TextStyle(
-                                            color: Colors.white, 
-                                            fontSize: 10, 
-                                            fontWeight: FontWeight.bold
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  isMyReply ? " ${reply.userName}" : reply.userName,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold, 
-                                    fontSize: 12, 
-                                    color: isMyReply ? Colors.white : AppColors.burgundy
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  reply.createdAt,
-                                  style: TextStyle(
-                                    color: isMyReply ? Colors.white70 : AppColors.burgundy.withOpacity(0.5), 
-                                    fontSize: 9
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Text(
-                                reply.content,
-                                style: TextStyle(
-                                  fontSize: 12, 
-                                  color: isMyReply ? Colors.white : Colors.black87, 
-                                  height: 1.4
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isMyReply)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                  return Container(
+                    margin: EdgeInsets.only(
+                      left: isMyReply ? 16 : 0,
+                      right: isMyReply ? 0 : 16,
+                      bottom: 8,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: isMyReply
+                          ? CrossAxisAlignment.start
+                          : CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isMyReply
+                                ? AppColors.burgundy.withOpacity(0.85)
+                                : AppColors.burgundy.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.burgundy.withOpacity(0.05),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: IconButton(
-                                  constraints: const BoxConstraints(),
-                                  padding: const EdgeInsets.all(4),
-                                  icon: const Icon(Icons.edit_rounded, size: 14, color: AppColors.burgundy),
-                                  onPressed: () {
-                                    _showEditBottomSheet(context, reply, commentProvider, token!);
-                                  },
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: isMyReply
+                                        ? Colors.white.withOpacity(0.2)
+                                        : AppColors.burgundy,
+                                    backgroundImage: reply.userImg != null
+                                        ? NetworkImage(reply.userImg!)
+                                        : null,
+                                    child: reply.userImg == null
+                                        ? Text(
+                                            reply.userName.isNotEmpty
+                                                ? reply.userName[0]
+                                                      .toUpperCase()
+                                                : 'R',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isMyReply
+                                        ? " ${reply.userName}"
+                                        : reply.userName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: isMyReply
+                                          ? Colors.white
+                                          : AppColors.burgundy,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.burgundy.withOpacity(0.05),
-                                  shape: BoxShape.circle,
+                              const SizedBox(height: 6),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
                                 ),
-                                child: IconButton(
-                                  constraints: const BoxConstraints(),
-                                  padding: const EdgeInsets.all(4),
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 14, color: AppColors.burgundy),
-                                  onPressed: () {
-                                    _showDeleteDialog(context, reply.id, commentProvider, token!);
-                                  },
+                                child: Text(
+                                  reply.content,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isMyReply
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    height: 1.4,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                        if (isMyReply)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(4),
+                                  icon: const Icon(
+                                    Icons.edit_rounded,
+                                    size: 14,
+                                    color: AppColors.burgundy,
+                                  ),
+                                  onPressed: () => _showEditBottomSheet(
+                                    context,
+                                    reply,
+                                    commentProvider,
+                                    token!,
+                                  ),
+                                ),
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(4),
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 14,
+                                    color: AppColors.burgundy,
+                                  ),
+                                  onPressed: () => _showDeleteDialog(
+                                    context,
+                                    reply.id,
+                                    commentProvider,
+                                    token!,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ],
       ),
     );
   }
 
-  Widget _buildCommentInputField(BuildContext context, CommentProvider commentProvider) {
+  Widget _buildCommentInputField(
+    BuildContext context,
+    CommentProvider commentProvider,
+  ) {
     final token = Provider.of<UserProvider>(context, listen: false).token;
     final messenger = ScaffoldMessenger.of(context);
 
@@ -558,7 +666,7 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: AppColors.burgundy,
+            color: AppColors.burgundy.withOpacity(0.1),
             offset: const Offset(0, -4),
             blurRadius: 12,
           ),
@@ -572,7 +680,11 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
               padding: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
               child: Row(
                 children: [
-                  Icon(Icons.reply_rounded, size: 16, color: AppColors.burgundy.withOpacity(0.7)),
+                  Icon(
+                    Icons.reply_rounded,
+                    size: 16,
+                    color: AppColors.burgundy.withOpacity(0.7),
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     "أنتِ تردين على تعليق لـ $_replyingToUserName",
@@ -590,7 +702,11 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                         _replyingToUserName = null;
                       });
                     },
-                    child: const Icon(Icons.cancel_rounded, size: 18, color: Colors.grey),
+                    child: const Icon(
+                      Icons.cancel_rounded,
+                      size: 18,
+                      color: Colors.grey,
+                    ),
                   ),
                 ],
               ),
@@ -603,7 +719,7 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                     color: AppColors.textFieldFill,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: _replyingToCommentId != null ? AppColors.burgundy : AppColors.burgundy,
+                      color: AppColors.burgundy.withOpacity(0.3),
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -613,8 +729,13 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                     keyboardType: TextInputType.multiline,
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: _replyingToCommentId != null ? "اكتبي ردكِ هنا..." : "شارك القرّاء انطباعك أو اقتباساً أعجبك...",
-                      hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
+                      hintText: _replyingToCommentId != null
+                          ? "اكتبي ردكِ هنا..."
+                          : "شارك القرّاء انطباعك...",
+                      hintStyle: const TextStyle(
+                        color: Colors.black38,
+                        fontSize: 13,
+                      ),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -649,7 +770,6 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                           if (_commentController.text.trim().isEmpty) return;
 
                           bool success;
-
                           if (_replyingToCommentId != null) {
                             success = await commentProvider.sendReply(
                               bookId: widget.bookId,
@@ -670,15 +790,15 @@ class _BookCommentsPageState extends State<BookCommentsPage> {
                           if (success) {
                             _commentController.clear();
                             FocusScope.of(context).unfocus();
-                            if (_replyingToCommentId != null) {
-                              setState(() {
-                                _replyingToCommentId = null;
-                                _replyingToUserName = null;
-                              });
-                            }
+                            setState(() {
+                              _replyingToCommentId = null;
+                              _replyingToUserName = null;
+                            });
                           } else {
                             messenger.showSnackBar(
-                              SnackBar(content: Text(commentProvider.errorMessage)),
+                              SnackBar(
+                                content: Text(commentProvider.errorMessage),
+                              ),
                             );
                           }
                         },

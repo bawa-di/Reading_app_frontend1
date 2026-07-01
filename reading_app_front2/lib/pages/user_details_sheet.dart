@@ -2,147 +2,188 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:reading_app_front2/conset_app.dart';
+import 'package:reading_app_front2/models/book.dart';
 import 'package:reading_app_front2/models/LeaderboardUser.dart';
 import 'package:reading_app_front2/provider/leaderboard_provider.dart';
 import 'package:reading_app_front2/provider/user_provider.dart';
+import 'package:reading_app_front2/widget/book_card.dart';
 
-class UserDetailsSheet extends StatelessWidget {
-  final int userId;
+class UserDetailsSheet extends StatefulWidget {
+  final LeaderboardUser user;
+  final Map<String, dynamic> details;
 
-  const UserDetailsSheet({super.key, required this.userId});
+  const UserDetailsSheet({
+    super.key,
+    required this.user,
+    required this.details,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final token = Provider.of<UserProvider>(context, listen: false).token ?? "";
-    final leaderboardProvider = Provider.of<LeaderboardProvider>(
-      context,
-      listen: false,
-    );
+  State<UserDetailsSheet> createState() => _UserDetailsSheetState();
+}
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-      decoration: const BoxDecoration(
-        color: AppColors.textFieldFill,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: FutureBuilder<Map<String, dynamic>?>(
-        key: ValueKey(userId),
-        future: leaderboardProvider.fetchUserDetails(token, userId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox(
-              height: 300,
-              child: Center(
-                child: CircularProgressIndicator(color: AppColors.burgundy),
-              ),
-            );
-          }
+class _UserDetailsSheetState extends State<UserDetailsSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
-          if (snapshot.hasError ||
-              snapshot.data == null ||
-              snapshot.data!['data'] == null) {
-            return const SizedBox(
-              height: 200,
-              child: Center(child: Text("عذراً، فشل تحميل البيانات")),
-            );
-          }
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
 
-          final Map<String, dynamic> rawData = snapshot.data!['data'];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final leaderboardProvider = Provider.of<LeaderboardProvider>(context, listen: false);
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      
+      // استخراج الـ ID الخاص بكِ من UserProvider
+      final int? myId = userProvider.currentUserId; 
 
-          // سطر التشخيص: سيطبع لكِ في الكونسول الأسماء العربية كما وصلت من رفيقتكِ
-          print("الأسماء الواصلة من الباك-إند: ${rawData.keys.toList()}");
-
-          // استخدام الموديل لتحويل البيانات
-          final user = LeaderboardUser.fromJson(rawData);
-
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AppColors.burgundy.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // الصورة الشخصية
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: AppColors.burgundy.withOpacity(0.1),
-                child: CircleAvatar(
-                  radius: 46,
-                  backgroundImage:
-                      (user.profileImg != null && user.profileImg!.isNotEmpty)
-                      ? NetworkImage(user.profileImg!)
-                      : const AssetImage('assets/images/default_avatar.png')
-                            as ImageProvider,
-                ),
-              ),
-              const SizedBox(height: 15),
-
-              // اسم المستخدم واللقب
-              Text(
-                user.name,
-                style: GoogleFonts.katibeh(
-                  fontSize: 32,
-                  color: AppColors.burgundy,
-                ),
-              ),
-              Text(
-                user.nickname,
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Divider(
-                  thickness: 1,
-                  indent: 30,
-                  endIndent: 30,
-                  color: AppColors.burgundy,
-                ),
-              ),
-
-              // عرض العدادات بالأسماء العربية المرتبطة
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStatBox("قرأ", user.finishedCount.toString()),
-                  _buildStatBox("يقرأ حالياً", user.readingNowCount.toString()),
-                  _buildStatBox("يود قراءته", user.wantToReadCount.toString()),
-                ],
-              ),
-              const SizedBox(height: 30),
-            ],
-          );
-        },
-      ),
-    );
+      // 1. التحقق إذا كان المستخدم هو صاحب الحساب
+      final bool isOwner = (myId != null && myId == widget.user.id);
+      
+      // 2. التحقق إذا كان المستخدم ضمن قائمة المتابَعين
+      final bool isFollowed = leaderboardProvider.followingUsers.any((u) => u.id == widget.user.id);
+      
+      // منع الدخول إذا لم يتحقق أي من الشرطين
+      if (!isOwner && !isFollowed) {
+        Navigator.pop(context); 
+        _showCustomSnackBar("يمكنك فقط عرض ملفك الشخصي أو ملفات من تتابعهم");
+      }
+    });
   }
 
-  Widget _buildStatBox(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.katibeh(
-            fontSize: 35,
+  // دالة الـ SnackBar الموحدة
+  void _showCustomSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        backgroundColor: Colors.white,
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+          side: const BorderSide(color: AppColors.burgundy, width: 2.0),
+        ),
+        content: Text(
+          message,
+          textAlign: TextAlign.right,
+          style: const TextStyle(
             color: AppColors.burgundy,
             fontWeight: FontWeight.bold,
           ),
         ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppColors.burgundy,
-            fontWeight: FontWeight.w500,
-          ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lists = widget.details['reading_lists'];
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppColors.creamBackground,
+        body: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.only(top: 60, bottom: 20, left: 20, right: 20),
+              decoration: const BoxDecoration(
+                color: AppColors.burgundy,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(40)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 32,
+                        backgroundImage: NetworkImage(widget.user.profileImg ?? ""),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.user.name,
+                              style: GoogleFonts.katibeh(fontSize: 26, color: Colors.white),
+                            ),
+                            Text(
+                              widget.user.nickname ?? "قارئ",
+                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 25),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.creamBackground,
+                      borderRadius: BorderRadius.circular(50),
+                      border: Border.all(color: Colors.white.withOpacity(0.5)),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      dividerColor: Colors.transparent,
+                      indicator: BoxDecoration(
+                        borderRadius: BorderRadius.circular(50),
+                        color: AppColors.burgundy.withOpacity(0.6),
+                      ),
+                      labelColor: Colors.white,
+                      unselectedLabelColor: AppColors.burgundy,
+                      labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      tabs: const [
+                        Tab(text: "المقروءة"),
+                        Tab(text: "يقرأ حالياً"),
+                        Tab(text: "يريد قراءتها"),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildBookList(lists['finished']),
+                  _buildBookList(lists['reading_now']),
+                  _buildBookList(lists['want_to_read']),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildBookList(dynamic list) {
+    if (list == null || (list as List).isEmpty) {
+      return Center(
+        child: Text(
+          "لا توجد كتب في هذه القائمة",
+          style: GoogleFonts.katibeh(fontSize: 20, color: AppColors.burgundy),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 20),
+      itemCount: list.length,
+      itemBuilder: (context, i) {
+        final bookData = list[i]['book'];
+        return BookCard(book: Book.fromJson(bookData));
+      },
     );
   }
 }

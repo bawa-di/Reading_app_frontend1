@@ -8,12 +8,14 @@ import 'package:reading_app_front2/pages/Login%20Screen.dart';
 import 'package:reading_app_front2/pages/MyListsScreen.dart';
 import 'package:reading_app_front2/pages/MySuggestionsScreen.dart';
 import 'package:reading_app_front2/pages/NotificationsScreen.dart';
+import 'package:reading_app_front2/pages/PaymentScreen.dart';
 import 'package:reading_app_front2/pages/SuggestBookScreen.dart';
 import 'package:reading_app_front2/provider/LibraryProvider.dart';
 import 'package:reading_app_front2/provider/NotificationProvider.dart';
 import 'package:reading_app_front2/provider/RatingProvider.dart';
 import 'package:reading_app_front2/provider/SuggestionProvider.dart';
 import 'package:reading_app_front2/provider/comment_provider.dart';
+import 'package:reading_app_front2/provider/payment_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reading_app_front2/pages/EditProfilePage.dart';
 import 'package:reading_app_front2/pages/LeaderboardScreen.dart';
@@ -73,6 +75,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => SuggestionProvider()),
         ChangeNotifierProvider(create: (_) => CommentProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => PaymentProvider()),
       ],
       // تمرير الـ savedToken إلى الـ MyApp لعمل فحص التوجيه التلقائي
       child: MyApp(savedToken: savedToken),
@@ -128,6 +131,7 @@ class MyApp extends StatelessWidget {
         MyListsScreen.id: (context) => const MyListsScreen(),
         NotificationsScreen.id: (context) => NotificationsScreen(),
         BookDetailPage.id: (context) => const BookDetailPage(),
+
       },
     );
   }

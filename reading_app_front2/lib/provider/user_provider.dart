@@ -19,13 +19,23 @@ class UserProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get hasNewNotification => _hasNewNotification;
 
+  // [تعديل] استخراج الـ ID الخاص بالمستخدم الحالي من المودل
+  int? get currentUserId => _user?.id; 
+
   // --- دالة التنظيف الموحدة (Reset) ---
-  // يتم استدعاؤها عند تسجيل الخروج أو حذف الحساب لضمان عدم وجود بيانات عالقة
   void clearUserData() {
     _user = null;
     _token = null;
     _hasNewNotification = false;
     notifyListeners();
+  }
+
+  // --- تحديث اللقب ---
+  void updateNickname(String newNickname) {
+    if (_user != null) {
+      _user!.nickname = newNickname;
+      notifyListeners();
+    }
   }
 
   // --- إدارة الإشعارات ---
@@ -120,7 +130,7 @@ class UserProvider with ChangeNotifier {
       if (result['status'] == 200 || result['status'] == 401) {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.remove('token');
-        clearUserData(); // تصفير كامل للبيانات
+        clearUserData();
         return null;
       }
       return result['body']['message'] ?? "حدث خطأ أثناء تسجيل الخروج";
@@ -141,7 +151,7 @@ class UserProvider with ChangeNotifier {
       if (result['status'] == 200) {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.remove('token');
-        clearUserData(); // تصفير كامل للبيانات
+        clearUserData();
         return null;
       }
       return result['body']['message'] ?? "فشل حذف الحساب";

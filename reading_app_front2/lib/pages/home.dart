@@ -12,6 +12,7 @@ import 'package:reading_app_front2/pages/ProfileScreen.dart';
 import 'package:reading_app_front2/pages/SettingsScreen.dart';
 import 'package:reading_app_front2/provider/user_provider.dart';
 import 'package:reading_app_front2/provider/books_provider.dart';
+import 'package:reading_app_front2/provider/NotificationProvider.dart';
 import 'package:reading_app_front2/widget/book_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,8 +30,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<UserProvider>(context, listen: false).fetchUserData();
+      // 1. جلب بيانات المستخدم والكتب
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      userProvider.fetchUserData();
       Provider.of<BooksProvider>(context, listen: false).fetchBooks();
+      
+      // 2. جلب الإشعارات فوراً بعد تحميل الشاشة إذا كان التوكن متاحاً
+      final token = userProvider.token;
+      if (token != null) {
+        Provider.of<NotificationProvider>(context, listen: false).loadNotifications(token);
+      }
     });
   }
 
@@ -42,7 +51,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // نستخدم Consumer لجعل الصفحة تستمع لتحديثات المستخدم والكتب
     return Scaffold(
       backgroundColor: AppColors.creamBackground,
       bottomNavigationBar: _buildBottomNav(),
@@ -54,10 +62,14 @@ class _HomeScreenState extends State<HomeScreen> {
           return Column(
             children: [
               _buildHeader(context, user, userProvider.isLoading),
-              _buildSearchBarWithNotifications(context, userProvider),
+              _buildSearchBarEntry(context),
               Expanded(
                 child: booksProvider.isLoading
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.burgundy))
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.burgundy,
+                        ),
+                      )
                     : _buildBookSection(dynamicBooks),
               ),
             ],
@@ -85,9 +97,15 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 isLoading ? "جاري التحميل..." : "أهلاً ${user?.name ?? 'زائر'}",
-                style: GoogleFonts.katibeh(color: AppColors.textFieldFill, fontSize: 24),
+                style: GoogleFonts.katibeh(
+                  color: AppColors.textFieldFill,
+                  fontSize: 24,
+                ),
               ),
-              const Text("ماذا سنقرأ اليوم؟", style: TextStyle(color: AppColors.textFieldFill, fontSize: 12)),
+              const Text(
+                "ماذا سنقرأ اليوم؟",
+                style: TextStyle(color: AppColors.textFieldFill, fontSize: 12),
+              ),
             ],
           ),
           GestureDetector(
@@ -95,8 +113,13 @@ class _HomeScreenState extends State<HomeScreen> {
             child: CircleAvatar(
               radius: 25,
               backgroundColor: AppColors.textFieldFill,
-              backgroundImage: (user?.profileImg != null && user!.profileImg!.isNotEmpty) ? NetworkImage(user!.profileImg!) : null,
-              child: (user?.profileImg == null || user!.profileImg!.isEmpty) ? const Icon(Icons.person, color: AppColors.pinkAccent) : null,
+              backgroundImage:
+                  (user?.profileImg != null && user!.profileImg!.isNotEmpty)
+                  ? NetworkImage(user!.profileImg!)
+                  : null,
+              child: (user?.profileImg == null || user!.profileImg!.isEmpty)
+                  ? const Icon(Icons.person, color: AppColors.pinkAccent)
+                  : null,
             ),
           ),
         ],
@@ -104,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSearchBarWithNotifications(BuildContext context, UserProvider userProvider) {
+  Widget _buildSearchBarEntry(BuildContext context) {
     return Transform.translate(
       offset: const Offset(0, -25),
       child: Padding(
@@ -115,59 +138,91 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Material(
                 elevation: 5,
                 borderRadius: BorderRadius.circular(30),
+                color: AppColors.textFieldFill,
                 child: TextField(
                   controller: _searchController,
+                  readOnly: true,
+                  onTap: () => _showAdvancedSearchModal(context),
                   textAlign: TextAlign.right,
-                  onChanged: (value) {
-                    setState(() {});
-                    final booksProvider = Provider.of<BooksProvider>(context, listen: false);
-                    if (value.trim().isEmpty) {
-                      booksProvider.fetchBooks();
-                    } else {
-                      booksProvider.searchBooks(queryText: value.trim());
-                    }
-                  },
-                  decoration: InputDecoration(
-                    hintText: "ابحث باسم الكتاب، الكاتب، أو التصنيف...",
-                    prefixIcon: const Icon(Icons.search, color: AppColors.burgundy),
-                    filled: true,
-                    fillColor: AppColors.textFieldFill,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                  decoration: const InputDecoration(
+                    hintText: "ابحث عن كتابك المفضل",
+                    prefixIcon: Icon(Icons.search, color: AppColors.burgundy),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 15,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            Material(
-              elevation: 5,
-              borderRadius: BorderRadius.circular(30),
-              color: AppColors.textFieldFill,
-              child: SizedBox(
-                width: 50,
-                height: 50,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.notifications_none_rounded, color: AppColors.burgundy, size: 26),
-                      onPressed: () {
-                        // عند الضغط، نقوم بإخفاء النقطة الحمراء
-                        userProvider.setNotificationStatus(false);
-                        Navigator.pushNamed(context, NotificationsScreen.id);
-                      },
-                    ),
-                    if (userProvider.hasNewNotification)
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                        ),
-                      ),
-                  ],
-                ),
+            _buildNotificationButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAdvancedSearchModal(BuildContext context) {
+    final TextEditingController titleCtrl = TextEditingController(
+      text: _searchController.text,
+    );
+    final TextEditingController authorCtrl = TextEditingController();
+    final TextEditingController generCtrl = TextEditingController();
+    final TextEditingController accessCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.creamBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          top: 20,
+          left: 20,
+          right: 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "ابحث عن كتابك المفضل",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.burgundy,
+              ),
+            ),
+            const SizedBox(height: 15),
+            _buildSearchField(titleCtrl, "اسم الكتاب"),
+            _buildSearchField(authorCtrl, "اسم المؤلف"),
+            _buildSearchField(generCtrl, "التصنيف"),
+            _buildSearchField(accessCtrl, "نوع الوصول"),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.burgundy,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              onPressed: () {
+                setState(() {
+                  _searchController.text = titleCtrl.text;
+                });
+                Provider.of<BooksProvider>(context, listen: false).searchBooks(
+                  title: titleCtrl.text,
+                  author: authorCtrl.text,
+                  gener: generCtrl.text,
+                  accessType: accessCtrl.text,
+                );
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "بحث",
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
           ],
@@ -176,10 +231,90 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSearchField(TextEditingController controller, String hint) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: TextField(
+        controller: controller,
+        textAlign: TextAlign.right,
+        decoration: InputDecoration(
+          hintText: hint,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationButton() {
+    return Consumer<NotificationProvider>(
+      builder: (context, notificationProvider, child) {
+        int unreadCount = notificationProvider.unreadCount;
+
+        return Material(
+          elevation: 5,
+          borderRadius: BorderRadius.circular(30),
+          color: AppColors.textFieldFill,
+          child: SizedBox(
+            width: 50,
+            height: 50,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.notifications_none_rounded,
+                    color: AppColors.burgundy,
+                    size: 26,
+                  ),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, NotificationsScreen.id),
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.pinkAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : '$unreadCount',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.burgundy,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildBookSection(List<Book> books) {
-    if (books.isEmpty) {
-      return Center(child: Text("لا توجد نتائج بحث مطابقة", style: GoogleFonts.tajawal(color: Colors.grey, fontSize: 16)));
-    }
+    if (books.isEmpty)
+      return const Center(
+        child: Text(
+          "لا توجد نتائج بحث مطابقة",
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 20),
       itemCount: books.length,
@@ -189,7 +324,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNav() {
     return Container(
-      decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(30)), color: AppColors.burgundy),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        color: AppColors.burgundy,
+      ),
       child: BottomNavigationBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -198,6 +336,13 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         currentIndex: 5,
         onTap: (index) {
+          if (index == 5) {
+            setState(() {
+              _searchController.clear();
+            });
+            Provider.of<BooksProvider>(context, listen: false).fetchBooks();
+            return;
+          }
           if (index == 0) Navigator.pushNamed(context, SettingsScreen.id);
           if (index == 1) Navigator.pushNamed(context, MySuggestionsScreen.id);
           if (index == 2) Navigator.pushNamed(context, FavoritesScreen.id);
@@ -205,12 +350,24 @@ class _HomeScreenState extends State<HomeScreen> {
           if (index == 4) Navigator.pushNamed(context, LeaderboardScreen.id);
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'الإعدادات'),
-          BottomNavigationBarItem(icon: Icon(Icons.lightbulb_outline_sharp), label: 'اقتراحات'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite, color: AppColors.pinkAccent), label: 'المفضلة'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: 'الإعدادات',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.lightbulb_outline_sharp),
+            label: 'اقتراحات',
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'المفضلة'),
           BottomNavigationBarItem(icon: Icon(Icons.book), label: 'القوائم'),
-          BottomNavigationBarItem(icon: Icon(Icons.people_alt_sharp), label: 'مجتمعي'),
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'الرئيسية'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_alt_sharp),
+            label: 'مجتمعي',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_filled),
+            label: 'الرئيسية',
+          ),
         ],
       ),
     );

@@ -13,7 +13,6 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // جلب التوكن مباشرة من UserProvider (الذي قمنا بتهيئته في main.dart)
     final userToken = Provider.of<UserProvider>(context, listen: false).token;
 
     // جلب البيانات عند بناء الواجهة
@@ -122,7 +121,7 @@ class NotificationsScreen extends StatelessWidget {
   }
 
   Widget _buildNotificationIcon(String type) {
-    // منطق الأيقونات الخاص بكِ (كما هو)
+
     IconData iconData = type.contains('ReaderTitleChangedNotification') ? Icons.emoji_events_rounded : Icons.notifications_rounded;
     return Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.amber.shade50, shape: BoxShape.circle), child: Icon(iconData, color: Colors.amber.shade800, size: 22));
   }

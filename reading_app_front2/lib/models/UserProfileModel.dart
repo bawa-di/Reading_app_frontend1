@@ -2,7 +2,7 @@ class UserProfileModel {
   final int id;
   final String name;
   final String email;
-  final String? nickname; 
+   String? nickname; 
   final String? profileImg;
   final int? totalPoints;
   final UserStats? stats; 

@@ -8,18 +8,31 @@ class CommentProvider with ChangeNotifier {
   List<CommentModel> _comments = [];
   List<CommentModel> get comments => _comments;
 
-  // حالة جلب البيانات (Loading عند فتح الصفحة)
+  // --- التعديلات الخاصة بإخفاء/عرض الردود ---
+  final Set<int> _visibleReplyIds = {};
+
+  bool isReplyVisible(int commentId) => _visibleReplyIds.contains(commentId);
+
+  void toggleReplies(int commentId) {
+    if (_visibleReplyIds.contains(commentId)) {
+      _visibleReplyIds.remove(commentId);
+    } else {
+      _visibleReplyIds.add(commentId);
+    }
+    notifyListeners();
+  }
+  // ------------------------------------------
+
   bool _isFetching = false;
   bool get isFetching => _isFetching;
 
-  // حالة إرسال البيانات (Loading عند الضغط على زر إرسال)
   bool _isSending = false;
   bool get isSending => _isSending;
 
   String _errorMessage = '';
   String get errorMessage => _errorMessage;
 
-  /// 1. دالة جلب تعليقات الكتاب وتخزينها
+  /// 1. دالة جلب التعليقات
   Future<void> fetchComments({required int bookId, required String token}) async {
     _isFetching = true;
     _errorMessage = '';
@@ -29,7 +42,9 @@ class CommentProvider with ChangeNotifier {
     final result = await _commentService.getBookComments(bookId: bookId, token: token);
 
     if (result['success'] == true) {
-      _comments = result['comments'];
+      List<CommentModel> fetchedComments = result['comments'];
+      fetchedComments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      _comments = fetchedComments;
     } else {
       _errorMessage = result['message'] ?? 'فشل جلب التعليقات';
     }
@@ -38,7 +53,7 @@ class CommentProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 2. دالة إرسال تعليق جديد وتحديث الواجهة فوراً
+  /// 2. إرسال تعليق جديد
   Future<bool> sendComment({
     required int bookId,
     required String content,
@@ -58,10 +73,7 @@ class CommentProvider with ChangeNotifier {
 
     if (result['success'] == true) {
       CommentModel newComment = result['comment'];
-      
-      // إدخال التعليق الجديد أول القائمة المحلية ليعرض للمستخدم فوراً
-      _comments.insert(0, newComment);
-      
+      _comments.add(newComment);
       _isSending = false;
       notifyListeners();
       return true;
@@ -73,7 +85,7 @@ class CommentProvider with ChangeNotifier {
     }
   }
 
-  /// 3. دالة إرسال الردود وتحديث القائمة محلياً
+  /// 3. إرسال الردود
   Future<bool> sendReply({
     required int bookId,
     required int parentId,
@@ -95,11 +107,12 @@ class CommentProvider with ChangeNotifier {
 
     if (result['success'] == true) {
       CommentModel newReply = result['comment'];
-
       final parentIndex = _comments.indexWhere((c) => c.id == parentId);
       
       if (parentIndex != -1) {
         _comments[parentIndex].replies.add(newReply);
+        // ضمان بقاء الردود مفتوحة عند إضافة رد جديد
+        _visibleReplyIds.add(parentId);
       }
 
       _isSending = false;
@@ -113,7 +126,7 @@ class CommentProvider with ChangeNotifier {
     }
   }
 
-  /// 4. 🚀 دالة تعديل التعليق المحدثة كلياً بالـ copyWith وبدون أي أخطاء
+  /// 4. تعديل التعليق
   Future<bool> editComment({
     required int commentId,
     required String content,
@@ -132,41 +145,22 @@ class CommentProvider with ChangeNotifier {
     );
 
     if (result['success'] == true) {
-      // البحث عن التعليق فيما إذا كان تعليقاً رئيسياً
       final mainCommentIndex = _comments.indexWhere((c) => c.id == commentId);
       
       if (mainCommentIndex != -1) {
-        // جلب الوقت الجديد الراجع من السيرفر إذا كان موجوداً
-        String? newCreatedAt = (result['comment'] != null && result['comment'] is CommentModel) 
-            ? result['comment'].createdAt 
-            : null;
-        
-        // 🔥 استخدام copyWith لتجاوز الـ final بنجاح
-        _comments[mainCommentIndex] = _comments[mainCommentIndex].copyWith(
-          content: content,
-          createdAt: newCreatedAt,
-        );
+        _comments[mainCommentIndex] = _comments[mainCommentIndex].copyWith(content: content);
       } else {
-        // إذا لم يكن رئيسياً، نبحث عنه داخل الـ replies الخاصة بكل تعليق
         for (var mainComment in _comments) {
           final replyIndex = mainComment.replies.indexWhere((r) => r.id == commentId);
           if (replyIndex != -1) {
-            String? newCreatedAt = (result['comment'] != null && result['comment'] is CommentModel) 
-                ? result['comment'].createdAt 
-                : null;
-            
-            // 🔥 استخدام copyWith للردود وتجاوز الـ final بنجاح
-            mainComment.replies[replyIndex] = mainComment.replies[replyIndex].copyWith(
-              content: content,
-              createdAt: newCreatedAt,
-            );
+            mainComment.replies[replyIndex] = mainComment.replies[replyIndex].copyWith(content: content);
             break;
           }
         }
       }
 
       _isSending = false;
-      notifyListeners(); // تحديث فوري للـ UI
+      notifyListeners();
       return true;
     } else {
       _errorMessage = result['message'] ?? 'فشل تعديل التعليق';
@@ -175,23 +169,21 @@ class CommentProvider with ChangeNotifier {
       return false;
     }
   }
-  /// 5. دالة حذف التعليق أو الرد وتحديث القائمة محلياً فوراً
+
+  /// 5. حذف التعليق
   Future<bool> deleteComment({required int commentId, required String token}) async {
-    _isSending = true; // نستخدم المؤشر لمنع الضغط المتكرر أثناء الحذف
+    _isSending = true;
     _errorMessage = '';
     notifyListeners();
 
     final result = await _commentService.deleteComment(commentId: commentId, token: token);
 
     if (result['success'] == true) {
-      // 🧠 البحث والحذف: هل هو تعليق رئيسي؟
       final mainIndex = _comments.indexWhere((c) => c.id == commentId);
       
       if (mainIndex != -1) {
-        // إذا تعليق رئيسي، بنحذفه من القائمة الأساسية
         _comments.removeAt(mainIndex);
       } else {
-        // 🔍 إذا ما لقيناه بالرئيسي، بكون "رد"، بنلف على الردود جوات كل تعليق وبنحذفه
         for (var mainComment in _comments) {
           final replyIndex = mainComment.replies.indexWhere((r) => r.id == commentId);
           if (replyIndex != -1) {
@@ -202,7 +194,7 @@ class CommentProvider with ChangeNotifier {
       }
 
       _isSending = false;
-      notifyListeners(); // تحديث فوري للواجهة بعد الحذف
+      notifyListeners();
       return true;
     } else {
       _errorMessage = result['message'] ?? 'فشل حذف التعليق';
